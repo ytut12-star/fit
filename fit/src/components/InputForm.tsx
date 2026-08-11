@@ -183,12 +183,12 @@ export function InputForm({ input, onChange, onReset, onCalculate }: InputFormPr
       </div>
 
       {/* 4. 정밀 신체 측정치 (하체) */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
           <Ruler size={14} className="text-emerald-400" />
           4. 하체 정밀 측정치 (선택)
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 items-start">
           <div>
             <label className="block text-xs text-zinc-300 mb-1">종아리 길이 (cm)</label>
             <input
@@ -210,10 +210,17 @@ export function InputForm({ input, onChange, onReset, onCalculate }: InputFormPr
             />
           </div>
         </div>
+        {/* 💡 종아리 길이 측정 안내 가이드 박스 추가 */}
+        <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-zinc-400 bg-zinc-950/60 p-2.5 rounded-lg border border-zinc-800/60 mt-1">
+          <Info size={13} className="shrink-0 mt-0.5 text-emerald-400" />
+          <span>
+            <strong>종아리 측정 기준:</strong> 의자에 앉아 바닥에 맨발을 대고, <strong>바깥쪽 복사뼈 중심부터 무릎 측면 관절이 접히는 홈까지</strong>의 수직 길이를 측정합니다.
+          </span>
+        </p>
       </div>
 
       {/* 5. 클릿 및 페달/슈즈 시스템 */}
-      <div className="space-y-4">
+      <div className="space-y-4 pt-1">
         <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
           <Footprints size={14} className="text-emerald-400" />
           5. 클릿 및 페달 스택
