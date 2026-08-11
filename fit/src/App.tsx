@@ -99,7 +99,7 @@ export function App() {
             </div>
             <div className="flex flex-col">
               <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                VELO FIT <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">PRO</span>
+                VeloSizing <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">PRO</span>
               </span>
               <span className="text-[11px] text-zinc-400 font-medium">로드바이크 사이즈 계산기</span>
             </div>
