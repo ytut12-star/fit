@@ -20,7 +20,6 @@ const SPACER_MAX_MM = 30;
 
 const REFERENCE_STEM_MM = 100;
 const REFERENCE_BAR_REACH_MM = 75;
-const DEFAULT_STEM_ANGLE_DEG = -6;
 
 const HEAD_TUBE_ANGLE_DEG = 73; 
 const STEERER_LEAN_ANGLE = 90 - HEAD_TUBE_ANGLE_DEG; 
@@ -59,37 +58,20 @@ function calculateSaddleHeight(inseam: number, crankLength: number, clipPosition
   return { saddleHeight: baseMm + clipCorrection + pedalStackCorrection, saddleHeightBaseMm: baseMm, saddleClipCorrection: clipCorrection };
 }
 
-// 💡 [개선] 프레임 각도 완전 배제: 순수 인체 비율(대퇴골 0.47) 기반 BRP 셋백 도출 함수
-function calculateSetback(
-  inseam: number,              // cm
-  calfLength: number | null,   // cm
-  cleatOffset: number,         // mm
-  ridingStyle: RidingStyle
-) {
-  // 1. 대퇴골(허벅지) 절대 길이 도출 (cm -> mm)
+function calculateSetback(inseam: number, calfLength: number | null, cleatOffset: number, ridingStyle: RidingStyle) {
   let femurMm = 0;
   if (calfLength && calfLength > 0) {
     femurMm = (inseam - calfLength) * 10;
   } else {
-    // 실측값이 없으면 표준 인체 비율 52% 적용
     femurMm = (inseam * 0.52) * 10; 
   }
 
-  // 2. 신체 기반(대퇴골) BRP 기준점 도출 (대퇴골 수평 투영 47% 상수 적용)
   const baseBRP = femurMm * 0.47;
-
-  // 3. 라이딩 스타일 보정 (퍼포먼스는 전진, 컴포트는 후퇴)
   const styleAdjust = ridingStyle === 'performance' ? -10 : ridingStyle === 'comfort' ? 5 : 0;
-
-  // 4. 클릿 오프셋 보정 (미드풋 적용 시 발 전진에 따른 보상 후퇴)
   const cleatAdjust = cleatOffset * 0.8;
 
-  // 최종 BRP 수평 셋백 (BB 수직선 ~ BRP)
   const brpSetback = Math.round(baseBRP + styleAdjust + cleatAdjust);
-
-  // 안장 코 셋백 (최신 숏노즈 안장 기준 약 115mm 차감 예시)
   const saddleNoseSetback = brpSetback - 115;
-  
   const setbackTotalMm = styleAdjust + cleatAdjust;
 
   return {
@@ -103,10 +85,8 @@ function calculateSetback(
   };
 }
 
-// 💡 [필수 헬퍼] 신체 비율 기반 Base Stack & Reach 도출
 function calculateBaseGeometry(inseam: number, height: number, upperBody: number, armLength: number) {
   const baseStack = Math.round(inseam * 4.5 + height + 10);
-  
   const expectedTorso = height * EXPECTED_TORSO_RATIO;
   const expectedArm = height * EXPECTED_ARM_RATIO;
   const torsoDelta = upperBody - expectedTorso;
@@ -141,19 +121,37 @@ function diagnoseBodyProportions(height: number, inseam: number, armLength: numb
   return { legTypeLabel, armTypeLabel, bodyTypeSummary };
 }
 
+
 // ============================================================
 // 3. Frame Evaluator & Solver
 // ============================================================
 function evaluateFrame(
   frame: FrameSizeSpec, baseStack: number, baseReach: number, targetStack: number, targetReach: number,
-  handlebarReach: number, drivetrainHoodReach: number, stemAngleDeg: number
+  handlebarReach: number, drivetrainHoodReach: number
 ) {
   const sizeScore = Math.abs(frame.stackMm - baseStack) * 1.5 + Math.abs(frame.reachMm - baseReach) * 1.5;
 
-  const rawSpacer = targetStack - frame.stackMm;
+  // 💡 [핵심 개선] 스템 각도 튜닝 로직 (-6도 표준, 필요시 -10도, -17도 하향)
+  let bestStemAngle = -6;
+  let angleStackEffect = 0; // -6도 대비 스택 변화량
+  let rawSpacer = targetStack - frame.stackMm;
+
+  // 스페이서를 다 빼도(0mm 이하) 목표 스택보다 프레임이 높을 때 스템 각도 하향 적용
+  if (rawSpacer < -3) {
+    if (rawSpacer + 7 < -3) {
+      bestStemAngle = -17;
+      angleStackEffect = -19; // -17도 적용 시 -6도 대비 스택 약 19mm 감소
+    } else {
+      bestStemAngle = -10;
+      angleStackEffect = -7;  // -10도 적용 시 -6도 대비 스택 약 7mm 감소
+    }
+  }
+
+  // 선택된 스템 각도(하향분)를 반영하여 최종 스페이서 재계산
+  rawSpacer = targetStack - frame.stackMm - angleStackEffect;
   const actualSpacer = Math.max(SPACER_MIN_MM, Math.min(SPACER_MAX_MM, Math.round(rawSpacer / 5) * 5));
 
-  const effectiveStack = frame.stackMm + actualSpacer;
+  const effectiveStack = frame.stackMm + actualSpacer + angleStackEffect;
   const stackMismatch = targetStack - effectiveStack;
   let stackScore = Math.abs(stackMismatch) * 2.0;
 
@@ -171,10 +169,11 @@ function evaluateFrame(
 
   const reachScore = Math.abs(targetReach - frame.reachMm) * 1.0;
 
+  // 스템 각도에 따른 리치 및 스템 도달거리 계산
   const spacerReachOffset = -actualSpacer * HEAD_ANGLE_LEAN_RATIO;
   const reqStemHorizontal = REFERENCE_STEM_MM + (targetReach - frame.reachMm) - spacerReachOffset + (REFERENCE_BAR_REACH_MM - handlebarReach) - drivetrainHoodReach;
   
-  const stemAngleToGround = STEERER_LEAN_ANGLE + stemAngleDeg; 
+  const stemAngleToGround = STEERER_LEAN_ANGLE + bestStemAngle; 
   const stemAngleRad = stemAngleToGround * (Math.PI / 180);
   const stemBodyRaw = reqStemHorizontal / Math.cos(stemAngleRad);
   const roundedStem = Math.round(stemBodyRaw / 10) * 10; 
@@ -202,6 +201,8 @@ function evaluateFrame(
     frame, totalScore, rawSpacerNeeded: rawSpacer, actualSpacer, stackMismatch, spacerReachOffset,
     requiredStem: stemBodyRaw, roundedStem: Math.max(80, Math.min(130, roundedStem)),
     withinTolerance: physicalFeasible, fitStatus,
+    recommendedStemAngle: bestStemAngle, // 💡 산출된 스템 각도 반환
+    angleStackEffect,
     debug: { sizeScore, stackScore, negativeSpacerScore, spacerScore, reachScore, stemScore, totalScore }
   } as any;
 }
@@ -221,7 +222,6 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const pedalStackCorrection = PEDAL_STACK_CORRECTION[pedalSystem] ?? 0;
   const { saddleHeight, saddleHeightBaseMm, saddleClipCorrection } = calculateSaddleHeight(inseam, crankLength, clipPosition, cleatOffset, pedalStackCorrection);
   
-  // 💡 신체 비율(대퇴골 0.47) 기반 BRP 셋백 도출 함수 호출
   const { setbackBaseMm, setbackClipCorrection, setbackTotalMm, brpSetback, saddleNoseSetback } = calculateSetback(inseam, input.calfLength, cleatOffset, ridingStyle);
   
   const { baseStack, baseReach } = calculateBaseGeometry(inseam, height, upperBody, armLength);
@@ -230,11 +230,11 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const targetStack = baseStack + (ridingStyle === 'comfort' ? 5 : ridingStyle === 'performance' ? -5 : 0);
   const targetReach = baseReach + (ridingStyle === 'comfort' ? -5 : ridingStyle === 'performance' ? 5 : 0);
 
-  const stemAngleDeg = input.stemAngle ?? DEFAULT_STEM_ANGLE_DEG;
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
 
+  // 프레임 탐색 (evaluateFrame 내부에서 스템 각도를 자동 조율함)
   const candidates = FRAME_DATASET.map(frame => 
-    evaluateFrame(frame, baseStack, baseReach, targetStack, targetReach, input.handlebarReach, drivetrainHoodReach, stemAngleDeg)
+    evaluateFrame(frame, baseStack, baseReach, targetStack, targetReach, input.handlebarReach, drivetrainHoodReach)
   ).sort((a, b) => a.totalScore - b.totalScore);
 
   const bestMatch = candidates[0];
@@ -248,9 +248,9 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   }
 
   const isUpsizedFrame = matchedFrame.stackMm > baseStack + 10;
-  const effectiveStack = matchedFrame.stackMm + bestMatch.actualSpacer;
+  const effectiveStack = matchedFrame.stackMm + bestMatch.actualSpacer + bestMatch.angleStackEffect;
   
-  const stemAngleToGround = STEERER_LEAN_ANGLE + stemAngleDeg;
+  const stemAngleToGround = STEERER_LEAN_ANGLE + bestMatch.recommendedStemAngle;
   const stemAngleRad = stemAngleToGround * (Math.PI / 180);
   const stemHorizontalRun = bestMatch.roundedStem * Math.cos(stemAngleRad);
   
@@ -258,6 +258,29 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     matchedFrame.reachMm + bestMatch.spacerReachOffset + stemHorizontalRun + 
     input.handlebarReach + drivetrainHoodReach + (setbackTotalMm * SETBACK_EFFECTIVE_REACH_FACTOR)
   );
+
+  // 💡 [수정] 조언 문구 상세화 (각도 및 스페이서 조합 피드백)
+  const recAngle = bestMatch.recommendedStemAngle;
+  let stemAdviceStr = `추천 스템 ${bestMatch.roundedStem}mm / ${recAngle}도`;
+  
+  if (recAngle === -17) {
+    stemAdviceStr += ` (에어로 포지션 확보를 위한 -17도 스템 적용)`;
+  } else if (recAngle === -10) {
+    stemAdviceStr += ` (스택 하향을 위한 -10도 스템 적용)`;
+  } else {
+    if (bestMatch.actualSpacer === 0) {
+      stemAdviceStr += ` (스페이서 최소화 세팅)`;
+    } else {
+      stemAdviceStr += ` (+${bestMatch.actualSpacer}mm 스페이서 세팅)`;
+    }
+  }
+
+  let frameSizeAdviceStr = `최적 체급 매칭 완료`;
+  if (bestMatch.rawSpacerNeeded < -5 && recAngle === -6) {
+     frameSizeAdviceStr = `⚠️ 목표 스택 초과. 추가적인 낙차 확보 불가`;
+  } else if (recAngle < -6) {
+     frameSizeAdviceStr = `스택 보정을 위해 스템 각도(-${Math.abs(recAngle)}도) 튜닝 적용됨`;
+  }
 
   return {
     upperBody: Math.round(upperBody * 10) / 10,
@@ -287,7 +310,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     baseReach,
     stack: matchedFrame.stackMm,
     reach: matchedFrame.reachMm,
-    frameSizeAdvice: bestMatch.rawSpacerNeeded < 0 ? `⚠️ 목표 스택 초과. 스템 하향 요망` : `최적 체급 매칭`,
+    frameSizeAdvice: frameSizeAdviceStr, // 💡 새로 구성된 프레임 조언 반영
     strRatio: Math.round((matchedFrame.stackMm / matchedFrame.reachMm) * 100) / 100,
     spacerHeight: bestMatch.actualSpacer,
     effectiveStack,
@@ -299,7 +322,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     stemDrivetrainAdjust: -drivetrainHoodReach,
     stemTotalAdjust: 0,
     stemLength: bestMatch.roundedStem,
-    stemAdvice: `추천 스템 ${bestMatch.roundedStem}mm (이론값 ${bestMatch.requiredStem.toFixed(1)}mm)`,
+    stemAdvice: stemAdviceStr, // 💡 새로 구성된 스템 각도 조언 반영
     effectiveReach,
     handlebarWidth: input.handlebarWidth,
     handlebarReach: input.handlebarReach,
