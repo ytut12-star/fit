@@ -35,8 +35,18 @@ const DEBUG_MODE = false;
 // 2. 단위 연산 헬퍼 함수
 // ============================================================
 function estimateArm(height: number, upperBody: number, inputMode: string, inputLength: number | null, wingspan: number | null): number {
+  // 1. 팔 길이를 직접 입력한 경우
   if (inputMode === 'arm' && inputLength && inputLength > 0) return inputLength;
-  if (inputMode === 'wingspan' && wingspan && wingspan > 0) return (wingspan - 35) / 2;
+
+  // 2. 윙스팬을 입력한 경우 (버그 수정)
+  // 키보단 윙스팬이 길면 그 차이의 절반만큼만 팔 길이에 더해줌
+  if (inputMode === 'wingspan' && wingspan && wingspan > 0) {
+    const baseArm = height * EXPECTED_ARM_RATIO;
+    const wingDelta = wingspan - height;
+    return baseArm + (wingDelta / 2);
+  }
+
+  // 3. 둘 다 없는 경우 (인체 비율 추정)
   const upperBodyDelta = upperBody - height * EXPECTED_TORSO_RATIO;
   return height * EXPECTED_ARM_RATIO + upperBodyDelta * 0.4;
 }
