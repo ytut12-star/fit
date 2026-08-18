@@ -312,20 +312,7 @@ export function InputForm({ input, onChange, onReset, onCalculate }: InputFormPr
               </select>
             </div>
             
-            <div>
-              <label className="block text-xs text-zinc-300 mb-1">예상 스템 각도</label>
-              <select
-                value={input.stemAngle ?? -6}
-                onChange={(e) => updateField('stemAngle', Number(e.target.value))}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-violet-500 transition-all"
-              >
-                <option value="-17">-17° (수평 셋업)</option>
-                <option value="-10">-10° (에어로 셋업)</option>
-                <option value="-6">-6° (표준 로드)</option>
-                <option value="0">0° (무각)</option>
-                <option value="6">+6° (컴포트 업라이트)</option>
-              </select>
-            </div>
+         
           </div>
         </div>
       </div>
