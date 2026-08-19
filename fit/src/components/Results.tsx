@@ -105,7 +105,22 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
 
   return (
     <div className="space-y-5">
-      {/* 0. 현재 보유 자전거 피팅 적합도 진단 리포트 (입력 시에만 노출) */}
+      {/* 💡 [신규] 콕핏 부품 튜닝 우선 권고 배너 (조건부 최상단 노출) */}
+      {result.cockpitTuningAdvice && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/40 bg-gradient-to-br from-rose-950/40 to-rose-900/10 p-5 shadow-lg shadow-rose-950/20 backdrop-blur-md">
+          <AlertTriangle size={24} className="shrink-0 mt-0.5 text-rose-400" />
+          <div>
+            <strong className="block text-sm font-bold text-rose-300 mb-1.5">
+              ⚠️ 콕핏 부품 조율 우선 권장 (사이즈 결정 전 필독)
+            </strong>
+            <p className="text-xs leading-relaxed text-zinc-300 break-keep">
+              {result.cockpitTuningAdvice}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 0. 현재 보유 자전거 피팅 적합도 진단 리포트 */}
       {diag && diag.hasData && (
         <div
           className={`rounded-2xl border p-5 backdrop-blur-md transition-all shadow-lg ${
