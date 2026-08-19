@@ -16,6 +16,7 @@ export interface FrameSizeSpec {
   name: string;
   stackMm: number;
   reachMm: number;
+  seatTubeAngle?: number;
 }
 
 // 프레임 매칭 결과 타입
@@ -25,6 +26,37 @@ export interface FrameMatchResult {
   reachDeltaMm: number;
   cost: number;
   withinTolerance: boolean;
+}
+
+// 현재 보유 자전거 입력 타입
+export interface CurrentBikeInput {
+  stack: number | null;
+  reach: number | null;
+  seatTubeAngle: number | null;
+  spacerHeight: number | null;
+  stemLength: number | null;
+  stemAngle: number | null;
+  drivetrain: Drivetrain;
+  handlebarWidth: number | null;
+  handlebarReach: number | null;
+  saddleHeight: number | null;
+  crankLength: number | null;
+}
+
+// 현재 보유 자전거 진단 리포트 타입
+export interface CurrentBikeDiagnosis {
+  hasData: boolean;
+  stackDiff: number;
+  reachDiff: number;
+  saddleHeightDiff: number | null;
+  seatTubeAngleUsed: number;
+  status: 'optimal' | 'tunable' | 'excessive';
+  statusLabel: string;
+  spacerAdvice: string;
+  stemAdvice: string;
+  saddleAdvice: string;
+  seatpostAdvice: string; // 💡 싯튜브 각도 기반 싯포스트/레일 처방
+  summary: string;
 }
 
 export interface FittingInput {
@@ -43,19 +75,20 @@ export interface FittingInput {
   handlebarReach: number;
   drivetrain: Drivetrain;
   stemAngle?: number;
+  currentBike?: CurrentBikeInput;
 }
 
 export interface FittingResult {
   upperBody: number;
   cleatOffset: number;
-  
+
   // 1단계: 안장 높이
   saddleHeight: number;
   saddleHeightBase: number;
   saddleCrankCorrection: number;
   saddleClipCorrection: number;
   pedalStackCorrection: number;
-  
+
   // 2단계: 안장 앞뒤 위치 (Setback)
   setbackBaseMm: number;
   setbackClipCorrection: number;
@@ -115,11 +148,13 @@ export interface FittingResult {
   shoulderWidth: number;
   seatTubeAngle: number;
 
-
   // 체형 판별
-  legTypeLabel: string; // 예: "상체가 길고 다리가 다소 짧은 체형 (롱 토르소)"
-  armTypeLabel: string; // 예: "표준 팔 길이"
-  bodyTypeSummary: string; // 종합 요약 텍스트
+  legTypeLabel: string;
+  armTypeLabel: string;
+  bodyTypeSummary: string;
+
+  // 현재 자전거 정밀 진단 결과
+  currentBikeDiagnosis?: CurrentBikeDiagnosis;
 }
 
 // ============================================================
@@ -143,7 +178,6 @@ export const PEDAL_SYSTEM_LABELS: Record<PedalSystem, string> = {
   flat: '평페달 + 일반 운동화 (~ 20mm 이상 / 높음)',
 };
 
-// 페달/슈즈 시스템별 스택 보정치 (Shimano SPD-SL 0mm 기준)
 export const PEDAL_STACK_CORRECTION: Record<PedalSystem, number> = {
   spdsl: 0,
   speedplay: -3,
@@ -151,7 +185,6 @@ export const PEDAL_STACK_CORRECTION: Record<PedalSystem, number> = {
   flat: 5,
 };
 
-// 확정된 구동계 브랜드/단수 라벨
 export const DRIVETRAIN_LABELS: Record<Drivetrain, string> = {
   shimano_12s_di2: '시마노 12단 Di2 [기준]',
   shimano_11s_di2: '시마노 11단 Di2 (-2mm)',
@@ -161,7 +194,6 @@ export const DRIVETRAIN_LABELS: Record<Drivetrain, string> = {
   campagnolo: '캄파놀로 (-2mm)',
 };
 
-// 확정된 구동계 후드 리치 오프셋 (시마노 12단 Di2 0mm 기준)
 export const DRIVETRAIN_HOOD_REACH: Record<Drivetrain, number> = {
   shimano_12s_di2: 0,
   shimano_11s_di2: -2,
