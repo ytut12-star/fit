@@ -18,8 +18,9 @@ import { FRAME_DATASET } from './frameDataset';
 // ============================================================
 // 1. 상수 정의
 // ============================================================
-const SPACER_MIN_MM = 0;
-const SPACER_MAX_MM = 30;
+export const BASE_TOPCAP_MM = 10; // 💡 필수 기본 헤드셋 베어링 커버/인터널 탑캡 최소 두께
+const USER_SPACER_MIN_MM = 0; // 추가 스페이서 링 최소값
+const USER_SPACER_MAX_MM = 25; // 추가 스페이서 링 최대 권장값
 
 const REFERENCE_STEM_MM = 100;
 const REFERENCE_BAR_REACH_MM = 75;
@@ -34,13 +35,12 @@ const SETBACK_EFFECTIVE_REACH_FACTOR = 0.4;
 
 const DEBUG_MODE = false;
 
-// 💡 핸들바 폭 & 레버 꺾임에 의한 유효 리치 변화량 산출
 export function getCockpitReachBonus(
   width: number = 400,
   leverAngle: LeverAngle = 'straight'
 ): number {
-  const widthEffect = ((width - 400) / 20) * 5; // 400mm 기준 20mm 넓어질 때마다 +5mm
-  const leverEffect = leverAngle === 'inward' ? 6 : 0; // 안쪽 꺾임 시 +6mm
+  const widthEffect = ((width - 400) / 20) * 5;
+  const leverEffect = leverAngle === 'inward' ? 6 : 0;
   return widthEffect + leverEffect;
 }
 
@@ -184,7 +184,7 @@ function diagnoseBodyProportions(
 }
 
 // ============================================================
-// 3. Frame Evaluator & Solver
+// 3. Frame Evaluator & Solver (기본 탑캡 10mm 포함)
 // ============================================================
 function evaluateFrame(
   frame: FrameSizeSpec,
@@ -203,7 +203,9 @@ function evaluateFrame(
 
   let bestStemAngle = -6;
   let angleStackEffect = 0;
-  let rawSpacer = targetStack - frame.stackMm;
+
+  // 💡 [핵심] 필요 높이 = 목표 스택 - 프레임 스택 - 기본 탑캡(10mm)
+  let rawSpacer = targetStack - frame.stackMm - BASE_TOPCAP_MM;
   let stemAnglePenalty = 0;
 
   if (rawSpacer < -3) {
@@ -212,13 +214,15 @@ function evaluateFrame(
     stemAnglePenalty = 5;
   }
 
-  rawSpacer = targetStack - frame.stackMm - angleStackEffect;
+  rawSpacer = targetStack - frame.stackMm - BASE_TOPCAP_MM - angleStackEffect;
   const actualSpacer = Math.max(
-    SPACER_MIN_MM,
-    Math.min(SPACER_MAX_MM, Math.round(rawSpacer / 5) * 5)
+    USER_SPACER_MIN_MM,
+    Math.min(USER_SPACER_MAX_MM, Math.round(rawSpacer / 5) * 5)
   );
 
-  const effectiveStack = frame.stackMm + actualSpacer + angleStackEffect;
+  // 총 유효 스택 = 프레임 + 기본 탑캡(10mm) + 추가 스페이서 + 스템 각도 보정
+  const effectiveStack =
+    frame.stackMm + BASE_TOPCAP_MM + actualSpacer + angleStackEffect;
   const stackMismatch = targetStack - effectiveStack;
   let stackScore = Math.abs(stackMismatch) * 2.0;
 
@@ -232,12 +236,14 @@ function evaluateFrame(
   }
 
   let spacerScore = 0;
-  if (actualSpacer > 20) spacerScore = (actualSpacer - 20) * 1.0;
+  if (actualSpacer > 15) spacerScore = (actualSpacer - 15) * 1.0;
 
   const reachScore = Math.abs(targetReach - frame.reachMm) * 1.0;
 
-  const spacerReachOffset = -actualSpacer * HEAD_ANGLE_LEAN_RATIO;
-  // 💡 핸들바 폭/레버 보정량(-cockpitReachBonus)을 빼주어 스템 길이 산출
+  // 스티어러 튜브를 따라 올라간 총 물리적 높이 (기본 탑캡 + 추가 스페이서)
+  const totalSteererStack = BASE_TOPCAP_MM + actualSpacer;
+  const spacerReachOffset = -totalSteererStack * HEAD_ANGLE_LEAN_RATIO;
+
   const reqStemHorizontal =
     REFERENCE_STEM_MM +
     (targetReach - frame.reachMm) -
@@ -271,13 +277,13 @@ function evaluateFrame(
 
   const physicalFeasible =
     rawSpacer >= -15 &&
-    rawSpacer <= 40 &&
+    rawSpacer <= 35 &&
     stemBodyRaw >= 70 &&
     stemBodyRaw <= 140;
   const positionFeasible = Math.abs(stackMismatch) <= 15 && physicalFeasible;
   const preferred =
     rawSpacer >= -5 &&
-    rawSpacer <= 30 &&
+    rawSpacer <= 25 &&
     stemBodyRaw >= 80 &&
     stemBodyRaw <= 120 &&
     positionFeasible;
@@ -304,7 +310,7 @@ function evaluateFrame(
   } as any;
 }
 
-// 💡 현재 보유 자전거 비교 진단
+// 💡 현재 보유 자전거 비교 진단 (기본 탑캡 10mm 연동)
 function diagnoseCurrentBike(
   current: CurrentBikeInput | undefined,
   idealTargetStack: number,
@@ -334,13 +340,13 @@ function diagnoseCurrentBike(
 
   const curStack = current.stack;
   const curReach = current.reach;
-  const curSpacer = current.spacerHeight ?? 15;
+  const curSpacer = current.spacerHeight ?? 10; // 추가 스페이서 링
+  const curTopCap = current.topCapHeight ?? BASE_TOPCAP_MM; // 기본 탑캡 (10mm)
   const curStem = current.stemLength ?? 100;
   const curStemAngle = current.stemAngle ?? -6;
   const curBarReach = current.handlebarReach ?? defaultBarReach;
   const curDrivetrainReach = DRIVETRAIN_HOOD_REACH[current.drivetrain] ?? 0;
 
-  // 💡 현재 자전거의 핸들바 폭 & 레버 꺾임 보정량 반영
   const curCockpitReachBonus = getCockpitReachBonus(
     current.handlebarWidth ?? 400,
     current.leverAngle ?? 'straight'
@@ -356,12 +362,7 @@ function diagnoseCurrentBike(
       : idealSaddleHeight;
 
   // 1. 스페이서 조정 최우선 평가
-  const anglesToTest = [curStemAngle];
-  const defaultAngles = [-6, -10, -17, 6];
-  for (const a of defaultAngles) {
-    if (!anglesToTest.includes(a)) anglesToTest.push(a);
-  }
-
+  const anglesToTest = [curStemAngle, -6, -10, -17, 6];
   let bestCombo: any = null;
   let fallbackCombo: any = null;
   let minFallbackScore = Infinity;
@@ -372,11 +373,14 @@ function diagnoseCurrentBike(
     else if (angle === -10) effect = -7;
     else if (angle === -17) effect = -19;
 
-    const rawSpacer = idealTargetStack - curStack - effect;
+    // 필요 추가 스페이서 = 목표 스택 - 현재 프레임 - 탑캡(10mm) - 스템각도효과
+    const rawSpacer = idealTargetStack - curStack - curTopCap - effect;
     const spacer = Math.max(0, Math.round(rawSpacer / 5) * 5);
 
     const angleRad = (STEERER_LEAN_ANGLE + angle) * (Math.PI / 180);
-    const spacerReachOffset = -spacer * HEAD_ANGLE_LEAN_RATIO;
+    const totalSteererStack = curTopCap + spacer;
+    const spacerReachOffset = -totalSteererStack * HEAD_ANGLE_LEAN_RATIO;
+
     const reqStemHorizontal =
       REFERENCE_STEM_MM +
       (idealTargetReach - curReach) -
@@ -397,7 +401,7 @@ function diagnoseCurrentBike(
       break;
     }
 
-    const score = Math.abs(rawSpacer - 10) + Math.abs(reqStem - 100);
+    const score = Math.abs(rawSpacer - 5) + Math.abs(reqStem - 100);
     if (score < minFallbackScore) {
       minFallbackScore = score;
       fallbackCombo = combo;
@@ -418,14 +422,15 @@ function diagnoseCurrentBike(
   else if (curStemAngle === -10) curAngleStackEffect = -7;
   else if (curStemAngle === -17) curAngleStackEffect = -19;
 
-  const curEffectiveStack = curStack + curSpacer + curAngleStackEffect;
+  const curEffectiveStack =
+    curStack + curTopCap + curSpacer + curAngleStackEffect;
   const stackDiff = curEffectiveStack - idealTargetStack;
 
   const curAngleRad = (STEERER_LEAN_ANGLE + curStemAngle) * (Math.PI / 180);
   const curStemHorizontal = curStem * Math.cos(curAngleRad);
   const curEffectiveReach =
     curReach -
-    curSpacer * HEAD_ANGLE_LEAN_RATIO +
+    (curTopCap + curSpacer) * HEAD_ANGLE_LEAN_RATIO +
     curStemHorizontal +
     curBarReach +
     curDrivetrainReach +
@@ -435,7 +440,7 @@ function diagnoseCurrentBike(
   const idealStemHorizontal = recStemLength * Math.cos(recAngleRad);
   const idealEffectiveReach =
     curReach -
-    recSpacer * HEAD_ANGLE_LEAN_RATIO +
+    (curTopCap + recSpacer) * HEAD_ANGLE_LEAN_RATIO +
     idealStemHorizontal +
     curBarReach +
     curDrivetrainReach +
@@ -446,21 +451,28 @@ function diagnoseCurrentBike(
   let spacerAdvice = '';
   if (curStemAngle === recAngle) {
     if (curSpacer === recSpacer) {
-      spacerAdvice = `현재 장착된 스페이서(${curSpacer}mm)가 목표 높이와 정확히 일치하여 조정이 필요 없습니다.`;
+      spacerAdvice =
+        recSpacer === 0
+          ? `현재 기본 탑캡(${curTopCap}mm)만 장착된 슬램드(0mm) 세팅이 목표 높이와 완벽히 일치합니다.`
+          : `현재 장착된 추가 스페이서(${curSpacer}mm, 기본탑캡 별도) 세팅이 목표 높이와 정확히 일치합니다.`;
     } else {
-      spacerAdvice = `가장 간단한 스페이서를 우선 조정합니다. 스템 각도(${
-        curStemAngle > 0 ? `+${curStemAngle}` : curStemAngle
-      }°)를 유지하고 스페이서만 ${recSpacer}mm로 변경하세요 (현재 대비 ${
-        recSpacer > curSpacer ? '+' : ''
-      }${recSpacer - curSpacer}mm).`;
+      const diff = recSpacer - curSpacer;
+      spacerAdvice =
+        recSpacer === 0
+          ? `추가 스페이서를 모두 제거하고 기본 탑캡(${curTopCap}mm)만 장착(0mm 풀커팅)하세요.`
+          : `스템 각도(${
+              curStemAngle > 0 ? `+${curStemAngle}` : curStemAngle
+            }°)를 유지하고 추가 스페이서를 ${recSpacer}mm로 재조정하세요 (현재 대비 ${
+              diff > 0 ? '+' : ''
+            }${diff}mm).`;
     }
   } else {
     spacerAdvice = `현재 각도(${
       curStemAngle > 0 ? `+${curStemAngle}` : curStemAngle
-    }°)로는 스페이서 허용치(0~20mm)를 맞출 수 없습니다. 스템을 ${recAngle}°로 교체 후 스페이서를 ${recSpacer}mm로 세팅하세요.`;
+    }°)로는 스페이서 허용치(0~20mm)를 맞출 수 없습니다. 스템을 ${recAngle}°로 교체 후 추가 스페이서를 ${recSpacer}mm로 세팅하세요.`;
   }
 
-  // 4. 스템 처방 (핸들바 세팅 효과 문구 추가)
+  // 4. 스템 처방
   let stemAdvice = '';
   const bonusComment =
     curCockpitReachBonus !== 0
@@ -658,8 +670,6 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     (ridingStyle === 'comfort' ? -5 : ridingStyle === 'performance' ? 5 : 0);
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
-
-  // 💡 핸들바 폭 & 레버 각도 보정값 산출
   const cockpitReachBonus = getCockpitReachBonus(
     input.handlebarWidth,
     leverAngle
@@ -682,15 +692,18 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const bestMatch = candidates[0];
   const matchedFrame = bestMatch.frame;
 
-  const isUpsizedFrame = matchedFrame.stackMm > baseStack + 10;
+  const isUpsizedFrame = matchedFrame.stackMm + BASE_TOPCAP_MM > baseStack + 10;
+  // 💡 총 유효 스택 = 프레임 + 기본 탑캡(10mm) + 추가 스페이서 + 스템 각도 보정
   const effectiveStack =
-    matchedFrame.stackMm + bestMatch.actualSpacer + bestMatch.angleStackEffect;
+    matchedFrame.stackMm +
+    BASE_TOPCAP_MM +
+    bestMatch.actualSpacer +
+    bestMatch.angleStackEffect;
 
   const stemAngleToGround = STEERER_LEAN_ANGLE + bestMatch.recommendedStemAngle;
   const stemAngleRad = stemAngleToGround * (Math.PI / 180);
   const stemHorizontalRun = bestMatch.roundedStem * Math.cos(stemAngleRad);
 
-  // 💡 총 유효 리치(Cockpit Reach)에 보정값 가산
   const effectiveReach = Math.round(
     matchedFrame.reachMm +
       bestMatch.spacerReachOffset +
@@ -702,8 +715,6 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   );
 
   const recAngle = bestMatch.recommendedStemAngle;
-
-  // 💡 스템 추천 문구에 정밀 연산치 및 보정 내역 노출
   const preciseStem = Math.round(bestMatch.requiredStem * 10) / 10;
   let stemAdviceStr = `추천 스템 ${bestMatch.roundedStem}mm (정밀 ${preciseStem}mm) / ${recAngle}도`;
 
@@ -717,9 +728,9 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     stemAdviceStr += ` (스택 하향을 위한 -10도 스템)`;
   } else {
     if (bestMatch.actualSpacer === 0) {
-      stemAdviceStr += ` (스페이서 0mm)`;
+      stemAdviceStr += ` (추가 스페이서 0mm / 슬램드)`;
     } else {
-      stemAdviceStr += ` (+${bestMatch.actualSpacer}mm 스페이서)`;
+      stemAdviceStr += ` (+${bestMatch.actualSpacer}mm 추가 스페이서)`;
     }
   }
 
@@ -778,7 +789,8 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     frameSizeAdvice: frameSizeAdviceStr,
     strRatio:
       Math.round((matchedFrame.stackMm / matchedFrame.reachMm) * 100) / 100,
-    spacerHeight: bestMatch.actualSpacer,
+    spacerHeight: bestMatch.actualSpacer, // 추가 장착 스페이서 링
+    topCapHeight: BASE_TOPCAP_MM, // 기본 헤드셋 탑캡 10mm
     effectiveStack,
     spacerReachOffset: Math.round(bestMatch.spacerReachOffset),
     stemBaseLength: Math.round(bestMatch.requiredStem),
