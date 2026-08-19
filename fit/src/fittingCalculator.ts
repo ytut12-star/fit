@@ -6,6 +6,7 @@ import type {
   ClipPosition,
   CurrentBikeInput,
   CurrentBikeDiagnosis,
+  LeverAngle,
 } from './types';
 import {
   DRIVETRAIN_HOOD_REACH,
@@ -32,6 +33,16 @@ const EXPECTED_ARM_RATIO = 0.34;
 const SETBACK_EFFECTIVE_REACH_FACTOR = 0.4;
 
 const DEBUG_MODE = false;
+
+// 💡 핸들바 폭 & 레버 꺾임에 의한 유효 리치 변화량 산출
+export function getCockpitReachBonus(
+  width: number = 400,
+  leverAngle: LeverAngle = 'straight'
+): number {
+  const widthEffect = ((width - 400) / 20) * 5; // 400mm 기준 20mm 넓어질 때마다 +5mm
+  const leverEffect = leverAngle === 'inward' ? 6 : 0; // 안쪽 꺾임 시 +6mm
+  return widthEffect + leverEffect;
+}
 
 // ============================================================
 // 2. 단위 연산 헬퍼 함수
@@ -183,7 +194,8 @@ function evaluateFrame(
   targetReach: number,
   handlebarReach: number,
   drivetrainHoodReach: number,
-  ridingStyle: RidingStyle
+  ridingStyle: RidingStyle,
+  cockpitReachBonus: number
 ) {
   const sizeScore =
     Math.abs(frame.stackMm - baseStack) * 1.5 +
@@ -225,12 +237,14 @@ function evaluateFrame(
   const reachScore = Math.abs(targetReach - frame.reachMm) * 1.0;
 
   const spacerReachOffset = -actualSpacer * HEAD_ANGLE_LEAN_RATIO;
+  // 💡 핸들바 폭/레버 보정량(-cockpitReachBonus)을 빼주어 스템 길이 산출
   const reqStemHorizontal =
     REFERENCE_STEM_MM +
     (targetReach - frame.reachMm) -
     spacerReachOffset +
     (REFERENCE_BAR_REACH_MM - handlebarReach) -
-    drivetrainHoodReach;
+    drivetrainHoodReach -
+    cockpitReachBonus;
 
   const stemAngleToGround = STEERER_LEAN_ANGLE + bestStemAngle;
   const stemAngleRad = stemAngleToGround * (Math.PI / 180);
@@ -287,27 +301,18 @@ function evaluateFrame(
     fitStatus,
     recommendedStemAngle: bestStemAngle,
     angleStackEffect,
-    debug: {
-      sizeScore,
-      stackScore,
-      negativeSpacerScore,
-      spacerScore,
-      reachScore,
-      stemScore,
-      stemAnglePenalty,
-      totalScore,
-    },
   } as any;
 }
 
-// 💡 [핵심 최적화] 스페이서 우선 조정 -> 안되면 스템 -> 20mm 초과시 프레임 교체
+// 💡 현재 보유 자전거 비교 진단
 function diagnoseCurrentBike(
   current: CurrentBikeInput | undefined,
   idealTargetStack: number,
   idealTargetReach: number,
   idealSaddleHeight: number,
   idealBRPSetback: number,
-  defaultBarReach: number
+  defaultBarReach: number,
+  idealCrankLength: number
 ): CurrentBikeDiagnosis {
   if (!current || !current.stack || !current.reach) {
     return {
@@ -323,6 +328,7 @@ function diagnoseCurrentBike(
       saddleAdvice: '',
       seatpostAdvice: '',
       summary: '',
+      crankAdvice: '',
     };
   }
 
@@ -333,6 +339,13 @@ function diagnoseCurrentBike(
   const curStemAngle = current.stemAngle ?? -6;
   const curBarReach = current.handlebarReach ?? defaultBarReach;
   const curDrivetrainReach = DRIVETRAIN_HOOD_REACH[current.drivetrain] ?? 0;
+
+  // 💡 현재 자전거의 핸들바 폭 & 레버 꺾임 보정량 반영
+  const curCockpitReachBonus = getCockpitReachBonus(
+    current.handlebarWidth ?? 400,
+    current.leverAngle ?? 'straight'
+  );
+
   const curSTA =
     current.seatTubeAngle && current.seatTubeAngle > 0
       ? current.seatTubeAngle
@@ -342,7 +355,7 @@ function diagnoseCurrentBike(
       ? current.saddleHeight
       : idealSaddleHeight;
 
-  // 1. 💡 스페이서 조정 최우선! 현재 스템 각도 유지 가능성 먼저 평가
+  // 1. 스페이서 조정 최우선 평가
   const anglesToTest = [curStemAngle];
   const defaultAngles = [-6, -10, -17, 6];
   for (const a of defaultAngles) {
@@ -369,23 +382,21 @@ function diagnoseCurrentBike(
       (idealTargetReach - curReach) -
       spacerReachOffset +
       (REFERENCE_BAR_REACH_MM - curBarReach) -
-      curDrivetrainReach;
+      curDrivetrainReach -
+      curCockpitReachBonus;
     const reqStem =
       Math.round(reqStemHorizontal / Math.cos(angleRad) / 10) * 10;
 
-    // 스페이서가 0~20mm 이내면 수용 가능 (사용자 요청: 20 초과 시 프레임 기변 기조)
     const isSpacerValid = rawSpacer >= -3 && spacer <= 20;
     const isStemValid = reqStem >= 70 && reqStem <= 130;
 
     const combo = { angle, spacer, reqStem, rawSpacer };
 
-    // 현재 각도로 해결 가능하면 최우선 선택 후 바로 루프 종료
     if (isSpacerValid && isStemValid && !bestCombo) {
       bestCombo = combo;
       break;
     }
 
-    // 최악의 경우를 대비한 콤보 점수 (스페이서 10mm, 스템 100mm에 가까울수록 좋은 점수)
     const score = Math.abs(rawSpacer - 10) + Math.abs(reqStem - 100);
     if (score < minFallbackScore) {
       minFallbackScore = score;
@@ -401,7 +412,7 @@ function diagnoseCurrentBike(
     rawSpacer: recRawSpacer,
   } = finalCombo;
 
-  // 2. 유효 스택/리치 오차 계산 (현재 상태 vs 이상적인 타겟)
+  // 2. 유효 스택/리치 오차 계산
   let curAngleStackEffect = 0;
   if (curStemAngle === 6) curAngleStackEffect = 21;
   else if (curStemAngle === -10) curAngleStackEffect = -7;
@@ -417,7 +428,8 @@ function diagnoseCurrentBike(
     curSpacer * HEAD_ANGLE_LEAN_RATIO +
     curStemHorizontal +
     curBarReach +
-    curDrivetrainReach;
+    curDrivetrainReach +
+    curCockpitReachBonus;
 
   const recAngleRad = (STEERER_LEAN_ANGLE + recAngle) * (Math.PI / 180);
   const idealStemHorizontal = recStemLength * Math.cos(recAngleRad);
@@ -426,10 +438,11 @@ function diagnoseCurrentBike(
     recSpacer * HEAD_ANGLE_LEAN_RATIO +
     idealStemHorizontal +
     curBarReach +
-    curDrivetrainReach;
+    curDrivetrainReach +
+    curCockpitReachBonus;
   const reachDiff = curEffectiveReach - idealEffectiveReach;
 
-  // 3. 스페이서 최우선 처방 메시지 작성
+  // 3. 스페이서 처방
   let spacerAdvice = '';
   if (curStemAngle === recAngle) {
     if (curSpacer === recSpacer) {
@@ -447,19 +460,26 @@ function diagnoseCurrentBike(
     }°)로는 스페이서 허용치(0~20mm)를 맞출 수 없습니다. 스템을 ${recAngle}°로 교체 후 스페이서를 ${recSpacer}mm로 세팅하세요.`;
   }
 
-  // 4. 스템 처방 메시지 작성
+  // 4. 스템 처방 (핸들바 세팅 효과 문구 추가)
   let stemAdvice = '';
+  const bonusComment =
+    curCockpitReachBonus !== 0
+      ? ` (핸들바/레버 세팅 보정 ${
+          curCockpitReachBonus > 0 ? '+' : ''
+        }${curCockpitReachBonus}mm 반영)`
+      : '';
+
   if (curStem === recStemLength && curStemAngle === recAngle) {
-    stemAdvice = `현재 장착된 ${curStem}mm 스템 길이가 리치에 최적화되어 교체가 불필요합니다.`;
+    stemAdvice = `현재 장착된 ${curStem}mm 스템 길이가 리치에 최적화되어 교체가 불필요합니다.${bonusComment}`;
   } else if (curStem === recStemLength && curStemAngle !== recAngle) {
-    stemAdvice = `리치를 위한 길이는 ${curStem}mm로 적당하나, 스택 보정을 위해 스템 각도만 ${recAngle}°로 교체하세요.`;
+    stemAdvice = `리치를 위한 길이는 ${curStem}mm로 적당하나, 스택 보정을 위해 스템 각도만 ${recAngle}°로 교체하세요.${bonusComment}`;
   } else {
     const diff = recStemLength - curStem;
     stemAdvice = `리치 최적화를 위해 현재 ${curStem}mm 스템 대신 ${recStemLength}mm 스템(${
       recAngle > 0 ? `+${recAngle}` : recAngle
     }°)으로 교체(${
       diff > 0 ? `+${diff}mm 연장` : `${diff}mm 단축`
-    })를 추천합니다.`;
+    })를 추천합니다.${bonusComment}`;
   }
 
   // 5. 안장 높이 처방
@@ -505,9 +525,9 @@ function diagnoseCurrentBike(
     seatpostAdvice = `현재 싯튜브 각도(${curSTA}°) 기준, 0~15mm 셋백 싯포스트 장착 시 안장 레일 조절을 통해 권장 BRP(${idealBRPSetback}mm)를 맞출 수 있습니다.`;
   }
 
-  // 7. 종합 상태 판별 (스페이서 20 초과 시 프레임 기변 권장 로직)
+  // 7. 종합 상태 판별
   const isFrameOversized = recRawSpacer < -5;
-  const isFrameUndersized = recSpacer > 20; // 💡 과한 스페이서면 프레임 작음 판정
+  const isFrameUndersized = recSpacer > 20;
   const isStemExtreme = recStemLength < 70 || recStemLength > 140;
 
   const isOptimal =
@@ -542,6 +562,24 @@ function diagnoseCurrentBike(
       '프레임 사이즈는 본인에게 맞습니다. 스페이서 높이 우선 조절 및 필요시 스템 교체로 최적의 피팅을 완성할 수 있습니다.';
   }
 
+  // 8. 크랭크 길이 임시 보정 로직
+  let crankAdvice = '';
+  if (
+    current.crankLength &&
+    current.crankLength > 0 &&
+    current.crankLength !== idealCrankLength
+  ) {
+    const diff = current.crankLength - idealCrankLength;
+    const tempSaddleHeight = idealSaddleHeight - diff;
+    const tempBRPSetback = idealBRPSetback - diff;
+    const actionText =
+      diff > 0
+        ? `안장을 ${Math.abs(diff)}mm 낮추고, 앞으로 ${Math.abs(diff)}mm 당겨야`
+        : `안장을 ${Math.abs(diff)}mm 높이고, 뒤로 ${Math.abs(diff)}mm 미뤄야`;
+
+    crankAdvice = `기변 전까지 현재 크랭크(${current.crankLength}mm)를 그대로 사용할 경우, ${actionText} 페달링 궤적이 유지됩니다. (임시 권장 안장높이: ${tempSaddleHeight}mm / BRP 셋백: ${tempBRPSetback}mm)`;
+  }
+
   return {
     hasData: true,
     stackDiff,
@@ -555,6 +593,7 @@ function diagnoseCurrentBike(
     saddleAdvice,
     seatpostAdvice,
     summary,
+    crankAdvice,
   };
 }
 
@@ -569,6 +608,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     clipPosition,
     pedalSystem,
     armInputMode,
+    leverAngle = 'straight',
   } = input;
   if (!height || !inseam || height <= 0 || inseam <= 0) return null;
 
@@ -619,6 +659,12 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
 
+  // 💡 핸들바 폭 & 레버 각도 보정값 산출
+  const cockpitReachBonus = getCockpitReachBonus(
+    input.handlebarWidth,
+    leverAngle
+  );
+
   const candidates = FRAME_DATASET.map((frame) =>
     evaluateFrame(
       frame,
@@ -628,23 +674,13 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
       targetReach,
       input.handlebarReach,
       drivetrainHoodReach,
-      ridingStyle
+      ridingStyle,
+      cockpitReachBonus
     )
   ).sort((a, b) => a.totalScore - b.totalScore);
 
   const bestMatch = candidates[0];
   const matchedFrame = bestMatch.frame;
-
-  if (DEBUG_MODE) {
-    console.log(
-      `\n=== FITTING DEBUG LOG [${height}/${inseam} | ${ridingStyle}] ===`
-    );
-    console.log(
-      `Base: Stack ${baseStack}, Reach ${baseReach} | Target: Stack ${targetStack}, Reach ${targetReach}`
-    );
-    console.log(`Body Diagnosis: ${legTypeLabel} / ${armTypeLabel}`);
-    console.log('=====================================\n');
-  }
 
   const isUpsizedFrame = matchedFrame.stackMm > baseStack + 10;
   const effectiveStack =
@@ -654,25 +690,36 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const stemAngleRad = stemAngleToGround * (Math.PI / 180);
   const stemHorizontalRun = bestMatch.roundedStem * Math.cos(stemAngleRad);
 
+  // 💡 총 유효 리치(Cockpit Reach)에 보정값 가산
   const effectiveReach = Math.round(
     matchedFrame.reachMm +
       bestMatch.spacerReachOffset +
       stemHorizontalRun +
       input.handlebarReach +
       drivetrainHoodReach +
+      cockpitReachBonus +
       setbackTotalMm * SETBACK_EFFECTIVE_REACH_FACTOR
   );
 
   const recAngle = bestMatch.recommendedStemAngle;
-  let stemAdviceStr = `추천 스템 ${bestMatch.roundedStem}mm / ${recAngle}도`;
+
+  // 💡 스템 추천 문구에 정밀 연산치 및 보정 내역 노출
+  const preciseStem = Math.round(bestMatch.requiredStem * 10) / 10;
+  let stemAdviceStr = `추천 스템 ${bestMatch.roundedStem}mm (정밀 ${preciseStem}mm) / ${recAngle}도`;
+
+  if (cockpitReachBonus !== 0) {
+    stemAdviceStr += ` [보정 ${
+      cockpitReachBonus > 0 ? '+' : ''
+    }${cockpitReachBonus}mm]`;
+  }
 
   if (recAngle === -10) {
-    stemAdviceStr += ` (스택 하향을 위한 -10도 스템 적용)`;
+    stemAdviceStr += ` (스택 하향을 위한 -10도 스템)`;
   } else {
     if (bestMatch.actualSpacer === 0) {
-      stemAdviceStr += ` (스페이서 최소화 세팅)`;
+      stemAdviceStr += ` (스페이서 0mm)`;
     } else {
-      stemAdviceStr += ` (+${bestMatch.actualSpacer}mm 스페이서 세팅)`;
+      stemAdviceStr += ` (+${bestMatch.actualSpacer}mm 스페이서)`;
     }
   }
 
@@ -691,7 +738,8 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     targetReach,
     Math.round(saddleHeight),
     brpSetback,
-    input.handlebarReach
+    input.handlebarReach,
+    crankLength
   );
 
   return {
@@ -745,7 +793,9 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     effectiveReach,
     handlebarWidth: input.handlebarWidth,
     handlebarReach: input.handlebarReach,
-    handlebarAdvice: '어깨폭 정렬 확인',
+    leverAngle,
+    cockpitReachBonus,
+    handlebarAdvice: '어깨폭 정렬 및 레버 꺾임 유효 리치 반영됨',
     drivetrain: input.drivetrain,
     drivetrainLabel: DRIVETRAIN_LABELS[input.drivetrain] ?? '기본',
     drivetrainHoodReach,
