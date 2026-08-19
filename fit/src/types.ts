@@ -151,6 +151,7 @@ export interface FittingResult {
   bodyTypeSummary: string;
 
   currentBikeDiagnosis?: CurrentBikeDiagnosis;
+  cockpitTuningAdvice: string | null;
 }
 
 export const RIDING_STYLE_LABELS: Record<RidingStyle, string> = {
