@@ -343,19 +343,25 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
           }
         />
 
-        {/* 3단계 · 스티어러 스페이서 */}
+        {/* 3단계 · 스티어러 스페이서 (기본 탑캡 구분 명시) */}
         <ResultCard
           icon={<Layers size={16} />}
-          label="3단계 · 스티어러 스페이서 (Spacer)"
+          label="3단계 · 추가 스페이서 (Spacer)"
           value={`${result.spacerHeight}`}
           unit="mm"
-          subtext={`핸들바 실질 Stack: ${result.effectiveStack}mm`}
+          subtext={
+            result.spacerHeight === 0
+              ? `기본 탑캡(${result.topCapHeight}mm)만 장착 (추가 링 0mm)`
+              : `기본 탑캡(${result.topCapHeight}mm) + 추가 링 ${result.spacerHeight}mm`
+          }
           accent={result.isUpsizedFrame ? 'emerald' : 'amber'}
-          explanation={`선택하신 라이딩 스타일에 최적화된 실제 스페이서 장착 높이입니다.`}
+          explanation={`실제 조립 시 필수적으로 들어가는 헤드셋 베어링 커버/탑캡(기본 ${result.topCapHeight}mm) 위에 추가로 장착할 스페이서 링 높이입니다.`}
           chain={
             result.spacerHeight > 0
-              ? `스페이서 ${result.spacerHeight}mm 적재`
-              : '스티어러 풀 컷팅 (Slammed Stem / 0mm)'
+              ? `추가 스페이서 +${result.spacerHeight}mm 적재 (총 콕핏 스택 +${
+                  result.topCapHeight + result.spacerHeight
+                }mm)`
+              : `스티어러 풀 컷팅 / 슬램드 (기본 탑캡 ${result.topCapHeight}mm만 장착)`
           }
         />
 
@@ -377,14 +383,10 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
           label="총 유효 스택 (Effective Stack)"
           value={`${result.effectiveStack}`}
           unit="mm"
-          subtext={`프레임 Stack (${result.stack}mm) + 스페이서 (${result.spacerHeight}mm)`}
+          subtext={`프레임(${result.stack}) + 탑캡(${result.topCapHeight}) + 추가링(${result.spacerHeight})`}
           accent="amber"
-          explanation="순수 프레임 Stack에 적재된 스페이서 높이가 가산된, 지면 기준 실질 핸들바 높이입니다."
-          chain={
-            result.spacerHeight > 0
-              ? `스페이서 +${result.spacerHeight}mm 적재 반영`
-              : '스티어러 풀 컷팅 (0mm)'
-          }
+          explanation="순수 프레임 Stack에 기본 탑캡(10mm)과 추가 장착된 스페이서 높이가 가산된, 지면 기준 실질 핸들바 높이입니다."
+          chain={`물리적 기본 탑캡(${result.topCapHeight}mm) 및 스페이서 통합 반영`}
         />
 
         {/* 콕핏 실측 세트 2: 총 유효 리치 */}
@@ -395,9 +397,9 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
           unit="mm"
           subtext={
             result.cockpitReachBonus !== 0
-              ? `핸들바 폭(${result.handlebarWidth}mm) / 레버 보정 (${
+              ? `핸들바 폭(${result.handlebarWidth}mm) / 레버 (${
                   result.cockpitReachBonus > 0 ? '+' : ''
-                }${result.cockpitReachBonus}mm) 적용됨`
+                }${result.cockpitReachBonus}mm) 반영됨`
               : '프레임 Reach + 스페이서 보정 + 스템 + 핸들바 + Setback'
           }
           accent="cyan"
