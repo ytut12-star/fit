@@ -587,7 +587,7 @@ function diagnoseCurrentBike(
     const actionText =
       diff > 0
         ? `안장을 ${Math.abs(diff)}mm 낮추고, 앞으로 ${Math.abs(diff)}mm 당겨야`
-        : `안장을 ${Math.abs(diff)}mm 높이고, 뒤로 ${Math.abs(diff)}mm 미뤄야`;
+        : `안장을 ${Math.abs(diff)}mm 높이고, 뒤로 ${Math.abs(diff)}mm 밀어야`;
 
     crankAdvice = `기변 전까지 현재 크랭크(${current.crankLength}mm)를 그대로 사용할 경우, ${actionText} 페달링 궤적이 유지됩니다. (임시 권장 안장높이: ${tempSaddleHeight}mm / BRP 셋백: ${tempBRPSetback}mm)`;
   }
