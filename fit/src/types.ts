@@ -11,7 +11,7 @@ export type Drivetrain =
   | 'sram_e1'
   | 'campagnolo';
 
-export type LeverAngle = 'straight' | 'inward'; // 💡 신규: 레버 꺾임 옵션
+export type LeverAngle = 'straight' | 'inward';
 
 export interface FrameSizeSpec {
   name: string;
@@ -32,13 +32,14 @@ export interface CurrentBikeInput {
   stack: number | null;
   reach: number | null;
   seatTubeAngle: number | null;
-  spacerHeight: number | null;
+  spacerHeight: number | null; // 유저가 추가로 넣은 순수 스페이서 링 높이
+  topCapHeight?: number | null; // 기본 탑캡 두께 (기본 10mm)
   stemLength: number | null;
   stemAngle: number | null;
   drivetrain: Drivetrain;
   handlebarWidth: number | null;
   handlebarReach: number | null;
-  leverAngle: LeverAngle; // 💡 신규
+  leverAngle: LeverAngle;
   saddleHeight: number | null;
   crankLength: number | null;
 }
@@ -73,7 +74,7 @@ export interface FittingInput {
   clipPosition: ClipPosition;
   handlebarWidth: number;
   handlebarReach: number;
-  leverAngle: LeverAngle; // 💡 신규
+  leverAngle: LeverAngle;
   drivetrain: Drivetrain;
   stemAngle?: number;
   currentBike?: CurrentBikeInput;
@@ -113,7 +114,8 @@ export interface FittingResult {
   frameSizeAdvice: string;
   strRatio: number;
 
-  spacerHeight: number;
+  spacerHeight: number; // 추천 추가 스페이서 링 높이
+  topCapHeight: number; // 기본 헤드셋 탑캡 두께 (10mm)
   effectiveStack: number;
   spacerReachOffset: number;
   stemBaseLength: number;
@@ -128,8 +130,8 @@ export interface FittingResult {
 
   handlebarWidth: number;
   handlebarReach: number;
-  leverAngle: LeverAngle; // 💡 신규
-  cockpitReachBonus: number; // 💡 신규: 핸들바 폭 & 꺾임에 의한 유효 리치 보정 합산값
+  leverAngle: LeverAngle;
+  cockpitReachBonus: number;
   handlebarAdvice: string;
 
   drivetrain: Drivetrain;
