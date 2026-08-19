@@ -54,7 +54,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-500 selection:text-zinc-950">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-500 selection:text-zinc-950 overflow-x-hidden">
       {/* 💡 광고창을 완전히 제거하고 깔끔한 정밀 분석 로딩 모달로 교체 */}
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
@@ -71,7 +71,7 @@ export function App() {
               입력하신 신체 치수와 지오메트리 데이터를 기반으로 최적의 세팅을 계산하고 있습니다.
             </p>
 
-            {/* 브랜드 슬로건 박스 (광고 제거된 자리) */}
+            {/* 브랜드 슬로건 박스 */}
             <div className="my-5 rounded-xl border border-zinc-800/80 bg-zinc-950/90 p-4 text-center">
               <p className="text-xs text-zinc-300 font-medium">
                 🚲 Ride Smarter, Fit Better
@@ -107,7 +107,7 @@ export function App() {
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* 좌측: 입력 폼 */}
           <div className="lg:col-span-5 xl:col-span-4">
