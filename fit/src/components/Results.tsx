@@ -18,6 +18,7 @@ import {
   Maximize2,
   Minimize2,
   Compass,
+  AlertTriangle,
 } from 'lucide-react';
 import { Tooltip } from './ui';
 import { AdBanner } from './AdBanner';
@@ -99,13 +100,12 @@ interface ResultsProps {
 
 export function Results({ result, ridingStyleLabel }: ResultsProps) {
   const hasClipOffset = result.cleatOffset > 0;
-  const hasDrivetrainAdjust = result.drivetrainHoodReach > 0;
   const pedalStackCorrection = result.pedalStackCorrection || 0;
   const diag = result.currentBikeDiagnosis;
 
   return (
     <div className="space-y-5">
-      {/* 💡 0. [신규] 현재 보유 자전거 피팅 적합도 진단 리포트 (입력 시에만 노출) */}
+      {/* 0. 현재 보유 자전거 피팅 적합도 진단 리포트 (입력 시에만 노출) */}
       {diag && diag.hasData && (
         <div
           className={`rounded-2xl border p-5 backdrop-blur-md transition-all shadow-lg ${
@@ -182,7 +182,6 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
               </p>
             </div>
 
-            {/* 💡 [신규] 싯튜브 각도 기반 싯포스트 & 레일 처방 */}
             <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-3.5">
               <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1.5 mb-1.5">
                 <Compass size={13} className="text-cyan-400" /> 싯튜브각 & 셋백
@@ -193,6 +192,22 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
               </p>
             </div>
           </div>
+
+          {/* 크랭크 길이 임시 보정 알림 배너 */}
+          {diag.crankAdvice && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs leading-relaxed text-amber-200 break-keep">
+              <AlertTriangle
+                size={18}
+                className="shrink-0 mt-0.5 text-amber-400"
+              />
+              <div>
+                <strong className="block text-[11px] uppercase tracking-wider text-amber-500 mb-0.5">
+                  임시 안장 피팅 가이드 (현재 크랭크 기준)
+                </strong>
+                {diag.crankAdvice}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -378,11 +393,21 @@ export function Results({ result, ridingStyleLabel }: ResultsProps) {
           label="총 유효 리치 (Cockpit Reach)"
           value={`${result.effectiveReach}`}
           unit="mm"
-          subtext="프레임 Reach + 스페이서 보정 + 스템 + 핸들바 + Setback"
+          subtext={
+            result.cockpitReachBonus !== 0
+              ? `핸들바 폭(${result.handlebarWidth}mm) / 레버 보정 (${
+                  result.cockpitReachBonus > 0 ? '+' : ''
+                }${result.cockpitReachBonus}mm) 적용됨`
+              : '프레임 Reach + 스페이서 보정 + 스템 + 핸들바 + Setback'
+          }
           accent="cyan"
           explanation="안장 후퇴, 프레임 규격, 스페이서, 스템, 핸들바, 구동계 후드가 모두 유기적으로 통합 반영된 상체-후드간 실측 유효 거리입니다."
           chain={
-            hasDrivetrainAdjust ? `구동계 후드 리치 편차 반영 포함` : undefined
+            result.cockpitReachBonus !== 0
+              ? `핸들바 폭(${result.handlebarWidth}mm)/꺾임 체감 ${
+                  result.cockpitReachBonus > 0 ? '+' : ''
+                }${result.cockpitReachBonus}mm 보정 완료`
+              : '핸들바 및 구동계 표준 세팅 보정 완료'
           }
         />
 
