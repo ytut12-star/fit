@@ -35,12 +35,13 @@ const SETBACK_EFFECTIVE_REACH_FACTOR = 0.4;
 
 const DEBUG_MODE = false;
 
+// 💡 핸들바 폭 & 레버 꺾임에 의한 유효 리치 변화량 산출
 export function getCockpitReachBonus(
   width: number = 400,
   leverAngle: LeverAngle = 'straight'
 ): number {
-  const widthEffect = ((width - 400) / 20) * 5;
-  const leverEffect = leverAngle === 'inward' ? 6 : 0;
+  const widthEffect = ((width - 400) / 20) * 5; // 400mm 기준 20mm 넓어질 때마다 +5mm
+  const leverEffect = leverAngle === 'inward' ? 6 : 0; // 안쪽 꺾임 시 +6mm
   return widthEffect + leverEffect;
 }
 
@@ -204,7 +205,7 @@ function evaluateFrame(
   let bestStemAngle = -6;
   let angleStackEffect = 0;
 
-  // 💡 [핵심] 필요 높이 = 목표 스택 - 프레임 스택 - 기본 탑캡(10mm)
+  // 💡 필요 높이 = 목표 스택 - 프레임 스택 - 기본 탑캡(10mm)
   let rawSpacer = targetStack - frame.stackMm - BASE_TOPCAP_MM;
   let stemAnglePenalty = 0;
 
@@ -220,7 +221,7 @@ function evaluateFrame(
     Math.min(USER_SPACER_MAX_MM, Math.round(rawSpacer / 5) * 5)
   );
 
-  // 총 유효 스택 = 프레임 + 기본 탑캡(10mm) + 추가 스페이서 + 스템 각도 보정
+  // 총 유효 스택
   const effectiveStack =
     frame.stackMm + BASE_TOPCAP_MM + actualSpacer + angleStackEffect;
   const stackMismatch = targetStack - effectiveStack;
@@ -240,7 +241,7 @@ function evaluateFrame(
 
   const reachScore = Math.abs(targetReach - frame.reachMm) * 1.0;
 
-  // 스티어러 튜브를 따라 올라간 총 물리적 높이 (기본 탑캡 + 추가 스페이서)
+  // 스티어러 튜브 물리적 높이 (기본 탑캡 + 추가 스페이서)
   const totalSteererStack = BASE_TOPCAP_MM + actualSpacer;
   const spacerReachOffset = -totalSteererStack * HEAD_ANGLE_LEAN_RATIO;
 
@@ -341,7 +342,7 @@ function diagnoseCurrentBike(
   const curStack = current.stack;
   const curReach = current.reach;
   const curSpacer = current.spacerHeight ?? 10; // 추가 스페이서 링
-  const curTopCap = current.topCapHeight ?? BASE_TOPCAP_MM; // 기본 탑캡 (10mm)
+  const curTopCap = current.topCapHeight ?? BASE_TOPCAP_MM; // 기본 탑캡
   const curStem = current.stemLength ?? 100;
   const curStemAngle = current.stemAngle ?? -6;
   const curBarReach = current.handlebarReach ?? defaultBarReach;
@@ -361,7 +362,6 @@ function diagnoseCurrentBike(
       ? current.saddleHeight
       : idealSaddleHeight;
 
-  // 1. 스페이서 조정 최우선 평가
   const anglesToTest = [curStemAngle, -6, -10, -17, 6];
   let bestCombo: any = null;
   let fallbackCombo: any = null;
@@ -373,7 +373,6 @@ function diagnoseCurrentBike(
     else if (angle === -10) effect = -7;
     else if (angle === -17) effect = -19;
 
-    // 필요 추가 스페이서 = 목표 스택 - 현재 프레임 - 탑캡(10mm) - 스템각도효과
     const rawSpacer = idealTargetStack - curStack - curTopCap - effect;
     const spacer = Math.max(0, Math.round(rawSpacer / 5) * 5);
 
@@ -416,7 +415,6 @@ function diagnoseCurrentBike(
     rawSpacer: recRawSpacer,
   } = finalCombo;
 
-  // 2. 유효 스택/리치 오차 계산
   let curAngleStackEffect = 0;
   if (curStemAngle === 6) curAngleStackEffect = 21;
   else if (curStemAngle === -10) curAngleStackEffect = -7;
@@ -447,7 +445,6 @@ function diagnoseCurrentBike(
     curCockpitReachBonus;
   const reachDiff = curEffectiveReach - idealEffectiveReach;
 
-  // 3. 스페이서 처방
   let spacerAdvice = '';
   if (curStemAngle === recAngle) {
     if (curSpacer === recSpacer) {
@@ -472,7 +469,6 @@ function diagnoseCurrentBike(
     }°)로는 스페이서 허용치(0~20mm)를 맞출 수 없습니다. 스템을 ${recAngle}°로 교체 후 추가 스페이서를 ${recSpacer}mm로 세팅하세요.`;
   }
 
-  // 4. 스템 처방
   let stemAdvice = '';
   const bonusComment =
     curCockpitReachBonus !== 0
@@ -494,7 +490,6 @@ function diagnoseCurrentBike(
     })를 추천합니다.${bonusComment}`;
   }
 
-  // 5. 안장 높이 처방
   let saddleAdvice = '';
   let saddleHeightDiff: number | null = null;
   if (current.saddleHeight && current.saddleHeight > 0) {
@@ -510,7 +505,6 @@ function diagnoseCurrentBike(
     }
   }
 
-  // 6. 싯튜브 각도(STA) & 셋백 처방
   const staRad = (curSTA * Math.PI) / 180;
   const seatTubeAxisSetback = effectiveSaddleHeight * Math.cos(staRad);
   const requiredOffsetFromAxis = idealBRPSetback - seatTubeAxisSetback;
@@ -537,7 +531,6 @@ function diagnoseCurrentBike(
     seatpostAdvice = `현재 싯튜브 각도(${curSTA}°) 기준, 0~15mm 셋백 싯포스트 장착 시 안장 레일 조절을 통해 권장 BRP(${idealBRPSetback}mm)를 맞출 수 있습니다.`;
   }
 
-  // 7. 종합 상태 판별
   const isFrameOversized = recRawSpacer < -5;
   const isFrameUndersized = recSpacer > 20;
   const isStemExtreme = recStemLength < 70 || recStemLength > 140;
@@ -574,7 +567,6 @@ function diagnoseCurrentBike(
       '프레임 사이즈는 본인에게 맞습니다. 스페이서 높이 우선 조절 및 필요시 스템 교체로 최적의 피팅을 완성할 수 있습니다.';
   }
 
-  // 8. 크랭크 길이 임시 보정 로직
   let crankAdvice = '';
   if (
     current.crankLength &&
@@ -587,7 +579,7 @@ function diagnoseCurrentBike(
     const actionText =
       diff > 0
         ? `안장을 ${Math.abs(diff)}mm 낮추고, 앞으로 ${Math.abs(diff)}mm 당겨야`
-        : `안장을 ${Math.abs(diff)}mm 높이고, 뒤로 ${Math.abs(diff)}mm 밀어야`;
+        : `안장을 ${Math.abs(diff)}mm 높이고, 뒤로 ${Math.abs(diff)}mm 미뤄야`;
 
     crankAdvice = `기변 전까지 현재 크랭크(${current.crankLength}mm)를 그대로 사용할 경우, ${actionText} 페달링 궤적이 유지됩니다. (임시 권장 안장높이: ${tempSaddleHeight}mm / BRP 셋백: ${tempBRPSetback}mm)`;
   }
@@ -693,7 +685,6 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const matchedFrame = bestMatch.frame;
 
   const isUpsizedFrame = matchedFrame.stackMm + BASE_TOPCAP_MM > baseStack + 10;
-  // 💡 총 유효 스택 = 프레임 + 기본 탑캡(10mm) + 추가 스페이서 + 스템 각도 보정
   const effectiveStack =
     matchedFrame.stackMm +
     BASE_TOPCAP_MM +
@@ -753,6 +744,14 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     crankLength
   );
 
+  // 💡 [신규 로직] 콕핏 셋업이 프레임/스템 선택을 망가뜨리고 있는지 감지 (피터의 조언)
+  let cockpitTuningAdvice: string | null = null;
+  const totalCockpitExcess = drivetrainHoodReach + cockpitReachBonus;
+
+  if (totalCockpitExcess >= 8 && bestMatch.requiredStem < 100) {
+    cockpitTuningAdvice = `현재 콕핏 부품(구동계 후드 + 레버 세팅)이 리치를 비정상적으로 연장(+${totalCockpitExcess}mm)시키고 있어 스템이 극단적으로 짧아집니다. 사이즈를 내리기 전에 1순위로 '레버 각도를 일자(Straight)로 원복'하고, 2순위로 '숏리치 핸들바' 교체를 강력히 권장합니다.`;
+  }
+
   return {
     upperBody: Math.round(upperBody * 10) / 10,
     cleatOffset: Math.round(cleatOffset * 10) / 10,
@@ -789,8 +788,8 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     frameSizeAdvice: frameSizeAdviceStr,
     strRatio:
       Math.round((matchedFrame.stackMm / matchedFrame.reachMm) * 100) / 100,
-    spacerHeight: bestMatch.actualSpacer, // 추가 장착 스페이서 링
-    topCapHeight: BASE_TOPCAP_MM, // 기본 헤드셋 탑캡 10mm
+    spacerHeight: bestMatch.actualSpacer,
+    topCapHeight: BASE_TOPCAP_MM,
     effectiveStack,
     spacerReachOffset: Math.round(bestMatch.spacerReachOffset),
     stemBaseLength: Math.round(bestMatch.requiredStem),
@@ -825,5 +824,6 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     armTypeLabel,
     bodyTypeSummary,
     currentBikeDiagnosis,
+    cockpitTuningAdvice, // 💡 새롭게 추가된 피터의 튜닝 권고 메시지를 리턴 객체에 바인딩합니다.
   };
 }
