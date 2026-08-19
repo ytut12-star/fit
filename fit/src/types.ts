@@ -11,7 +11,8 @@ export type Drivetrain =
   | 'sram_e1'
   | 'campagnolo';
 
-// 프레임 데이터셋 스펙 타입
+export type LeverAngle = 'straight' | 'inward'; // 💡 신규: 레버 꺾임 옵션
+
 export interface FrameSizeSpec {
   name: string;
   stackMm: number;
@@ -19,7 +20,6 @@ export interface FrameSizeSpec {
   seatTubeAngle?: number;
 }
 
-// 프레임 매칭 결과 타입
 export interface FrameMatchResult {
   frame: FrameSizeSpec;
   spacerNeededMm: number;
@@ -28,7 +28,6 @@ export interface FrameMatchResult {
   withinTolerance: boolean;
 }
 
-// 현재 보유 자전거 입력 타입
 export interface CurrentBikeInput {
   stack: number | null;
   reach: number | null;
@@ -39,11 +38,11 @@ export interface CurrentBikeInput {
   drivetrain: Drivetrain;
   handlebarWidth: number | null;
   handlebarReach: number | null;
+  leverAngle: LeverAngle; // 💡 신규
   saddleHeight: number | null;
   crankLength: number | null;
 }
 
-// 현재 보유 자전거 진단 리포트 타입
 export interface CurrentBikeDiagnosis {
   hasData: boolean;
   stackDiff: number;
@@ -55,8 +54,9 @@ export interface CurrentBikeDiagnosis {
   spacerAdvice: string;
   stemAdvice: string;
   saddleAdvice: string;
-  seatpostAdvice: string; // 💡 싯튜브 각도 기반 싯포스트/레일 처방
+  seatpostAdvice: string;
   summary: string;
+  crankAdvice: string;
 }
 
 export interface FittingInput {
@@ -73,6 +73,7 @@ export interface FittingInput {
   clipPosition: ClipPosition;
   handlebarWidth: number;
   handlebarReach: number;
+  leverAngle: LeverAngle; // 💡 신규
   drivetrain: Drivetrain;
   stemAngle?: number;
   currentBike?: CurrentBikeInput;
@@ -82,14 +83,12 @@ export interface FittingResult {
   upperBody: number;
   cleatOffset: number;
 
-  // 1단계: 안장 높이
   saddleHeight: number;
   saddleHeightBase: number;
   saddleCrankCorrection: number;
   saddleClipCorrection: number;
   pedalStackCorrection: number;
 
-  // 2단계: 안장 앞뒤 위치 (Setback)
   setbackBaseMm: number;
   setbackClipCorrection: number;
   setbackTotalMm: number;
@@ -99,7 +98,6 @@ export interface FittingResult {
   brpSetback: number;
   saddleNoseSetback: number;
 
-  // 3단계: 프레임 & 목표 지오메트리
   crankLength: number;
   targetStack: number;
   targetReach: number;
@@ -115,7 +113,6 @@ export interface FittingResult {
   frameSizeAdvice: string;
   strRatio: number;
 
-  // 4단계: 스템 & 유효 리치
   spacerHeight: number;
   effectiveStack: number;
   spacerReachOffset: number;
@@ -129,18 +126,17 @@ export interface FittingResult {
   stemAdvice: string;
   effectiveReach: number;
 
-  // 핸들바 & 콕핏
   handlebarWidth: number;
   handlebarReach: number;
+  leverAngle: LeverAngle; // 💡 신규
+  cockpitReachBonus: number; // 💡 신규: 핸들바 폭 & 꺾임에 의한 유효 리치 보정 합산값
   handlebarAdvice: string;
 
-  // 구동계
   drivetrain: Drivetrain;
   drivetrainLabel: string;
   drivetrainHoodReach: number;
   drivetrainAdvice: string;
 
-  // 클릿 가이드 & 보조 지표
   clipGuide: string;
   clipGuideShort: string;
   footSize: number | null;
@@ -148,18 +144,12 @@ export interface FittingResult {
   shoulderWidth: number;
   seatTubeAngle: number;
 
-  // 체형 판별
   legTypeLabel: string;
   armTypeLabel: string;
   bodyTypeSummary: string;
 
-  // 현재 자전거 정밀 진단 결과
   currentBikeDiagnosis?: CurrentBikeDiagnosis;
 }
-
-// ============================================================
-// 라벨 및 상수 정의
-// ============================================================
 
 export const RIDING_STYLE_LABELS: Record<RidingStyle, string> = {
   performance: '퍼포먼스 핏 (속도/효율 중심)',
@@ -203,7 +193,7 @@ export const DRIVETRAIN_HOOD_REACH: Record<Drivetrain, number> = {
   campagnolo: -2,
 };
 
-export const HANDLEBAR_WIDTH_OPTIONS = [380, 400, 420, 440];
+export const HANDLEBAR_WIDTH_OPTIONS = [360, 380, 400, 420, 440];
 
 export const HANDLEBAR_REACH_OPTIONS = [
   { value: 70, label: '70mm (숏)' },
