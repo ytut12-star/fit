@@ -28,8 +28,10 @@ const INITIAL_INPUT: FittingInput = {
 export function App() {
   const [input, setInput] = useState<FittingInput>(INITIAL_INPUT);
   const [result, setResult] = useState<FittingResult | null>(null);
-  const [submittedInput, setSubmittedInput] = useState<FittingInput | null>(null);  
-  
+  const [submittedInput, setSubmittedInput] = useState<FittingInput | null>(
+    null
+  );
+
   // 💡 광고 개념을 걷어내고 순수 '정밀 분석 로딩' 상태로 전환
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -62,13 +64,14 @@ export function App() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
               <Loader2 size={24} className="animate-spin text-cyan-400" />
             </div>
-            
+
             <h3 className="text-base font-bold text-zinc-100 flex items-center justify-center gap-1.5">
               <Sparkles size={16} className="text-cyan-400" />
               VeloSizing 정밀 분석 중...
             </h3>
             <p className="mt-1 text-xs text-zinc-400">
-              입력하신 신체 치수와 지오메트리 데이터를 기반으로 최적의 세팅을 계산하고 있습니다.
+              입력하신 신체 치수와 지오메트리 데이터를 기반으로 최적의 세팅을
+              계산하고 있습니다.
             </p>
 
             {/* 브랜드 슬로건 박스 */}
@@ -98,9 +101,14 @@ export function App() {
             </div>
             <div className="flex flex-col">
               <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                VeloSizing <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">PRO</span>
+                VeloSizing{' '}
+                <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">
+                  PRO
+                </span>
               </span>
-              <span className="text-[11px] text-zinc-400 font-medium">로드바이크 사이즈 계산기</span>
+              <span className="text-[11px] text-zinc-400 font-medium">
+                로드바이크 사이즈 계산기
+              </span>
             </div>
           </div>
         </div>
@@ -124,16 +132,27 @@ export function App() {
             {result && submittedInput ? (
               <>
                 <PedalingSimulator result={result} input={submittedInput} />
-                <Results result={result} ridingStyleLabel={RIDING_STYLE_LABELS[submittedInput.ridingStyle]} />
+                <Results
+                  result={result}
+                  ridingStyleLabel={
+                    RIDING_STYLE_LABELS[submittedInput.ridingStyle]
+                  }
+                />
               </>
             ) : (
               <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 p-8 text-center">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   <span className="text-2xl">🚴</span>
                 </div>
-                <h3 className="text-base font-bold text-zinc-200">피팅 데이터 입력 대기 중</h3>
+                <h3 className="text-base font-bold text-zinc-200">
+                  피팅 데이터 입력 대기 중
+                </h3>
                 <p className="mt-2 max-w-sm text-xs leading-relaxed text-zinc-400">
-                  좌측 폼에 신체 치수와 옵션을 선택하신 후 하단의 <strong className="text-cyan-400">[피팅 결과 계산 및 리포트 생성]</strong> 버튼을 누르시면 정밀 리포트가 생성됩니다.
+                  좌측 폼에 신체 치수와 옵션을 선택하신 후 하단의{' '}
+                  <strong className="text-cyan-400">
+                    [피팅 결과 계산 및 리포트 생성]
+                  </strong>{' '}
+                  버튼을 누르시면 정밀 리포트가 생성됩니다.
                 </p>
               </div>
             )}
