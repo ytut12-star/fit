@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 💡 iOS 및 모바일 브라우저에서 입력칸 터치 시 강제 확대(Zoom) 방지 */
+@layer base {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
