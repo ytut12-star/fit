@@ -35,18 +35,12 @@ const DEBUG_MODE = false;
 // 2. 단위 연산 헬퍼 함수
 // ============================================================
 function estimateArm(height: number, upperBody: number, inputMode: string, inputLength: number | null, wingspan: number | null): number {
-  // 1. 팔 길이를 직접 입력한 경우
   if (inputMode === 'arm' && inputLength && inputLength > 0) return inputLength;
-
-  // 2. 윙스팬을 입력한 경우 (버그 수정)
-  // 키보단 윙스팬이 길면 그 차이의 절반만큼만 팔 길이에 더해줌
   if (inputMode === 'wingspan' && wingspan && wingspan > 0) {
     const baseArm = height * EXPECTED_ARM_RATIO;
     const wingDelta = wingspan - height;
     return baseArm + (wingDelta / 2);
   }
-
-  // 3. 둘 다 없는 경우 (인체 비율 추정)
   const upperBodyDelta = upperBody - height * EXPECTED_TORSO_RATIO;
   return height * EXPECTED_ARM_RATIO + upperBodyDelta * 0.4;
 }
@@ -131,33 +125,29 @@ function diagnoseBodyProportions(height: number, inseam: number, armLength: numb
   return { legTypeLabel, armTypeLabel, bodyTypeSummary };
 }
 
-
 // ============================================================
 // 3. Frame Evaluator & Solver
 // ============================================================
 function evaluateFrame(
   frame: FrameSizeSpec, baseStack: number, baseReach: number, targetStack: number, targetReach: number,
-  handlebarReach: number, drivetrainHoodReach: number
+  handlebarReach: number, drivetrainHoodReach: number, ridingStyle: RidingStyle
 ) {
+  // 1. 기본 체급 점수 (자연스러운 매칭 우선)
   const sizeScore = Math.abs(frame.stackMm - baseStack) * 1.5 + Math.abs(frame.reachMm - baseReach) * 1.5;
 
-  // 💡 [핵심 개선] 스템 각도 튜닝 로직 (-6도 표준, 필요시 -10도, -17도 하향)
+  // 💡 [개선] 스템 각도는 현실적으로 -6도와 -10도만 사용
   let bestStemAngle = -6;
-  let angleStackEffect = 0; // -6도 대비 스택 변화량
+  let angleStackEffect = 0; 
   let rawSpacer = targetStack - frame.stackMm;
+  let stemAnglePenalty = 0; 
 
-  // 스페이서를 다 빼도(0mm 이하) 목표 스택보다 프레임이 높을 때 스템 각도 하향 적용
+  // 스페이서를 다 빼도 목표 스택보다 프레임이 살짝 높을 때 -10도 스템만 제한적으로 허용
   if (rawSpacer < -3) {
-    if (rawSpacer + 7 < -3) {
-      bestStemAngle = -17;
-      angleStackEffect = -19; // -17도 적용 시 -6도 대비 스택 약 19mm 감소
-    } else {
-      bestStemAngle = -10;
-      angleStackEffect = -7;  // -10도 적용 시 -6도 대비 스택 약 7mm 감소
-    }
+    bestStemAngle = -10;
+    angleStackEffect = -7; // -10도 적용 시 -6도 대비 스택 약 7mm 하향
+    stemAnglePenalty = 5;  // 가벼운 패널티 부여 (-6도로 해결 가능한 프레임을 우선 선호하도록)
   }
 
-  // 선택된 스템 각도(하향분)를 반영하여 최종 스페이서 재계산
   rawSpacer = targetStack - frame.stackMm - angleStackEffect;
   const actualSpacer = Math.max(SPACER_MIN_MM, Math.min(SPACER_MAX_MM, Math.round(rawSpacer / 5) * 5));
 
@@ -179,7 +169,6 @@ function evaluateFrame(
 
   const reachScore = Math.abs(targetReach - frame.reachMm) * 1.0;
 
-  // 스템 각도에 따른 리치 및 스템 도달거리 계산
   const spacerReachOffset = -actualSpacer * HEAD_ANGLE_LEAN_RATIO;
   const reqStemHorizontal = REFERENCE_STEM_MM + (targetReach - frame.reachMm) - spacerReachOffset + (REFERENCE_BAR_REACH_MM - handlebarReach) - drivetrainHoodReach;
   
@@ -195,7 +184,8 @@ function evaluateFrame(
   else if (stemBodyRaw < 80) stemScore = 15 + (80 - stemBodyRaw) * 5.0;
   else stemScore = 15 + (stemBodyRaw - 120) * 5.0;
 
-  const totalScore = sizeScore + stackScore + negativeSpacerScore + spacerScore + reachScore + stemScore;
+  // 💡 억지 사이즈 다운 패널티 제거 (자연스러운 점수 합산)
+  const totalScore = sizeScore + stackScore + negativeSpacerScore + spacerScore + reachScore + stemScore + stemAnglePenalty;
 
   const physicalFeasible = rawSpacer >= -15 && rawSpacer <= 40 && stemBodyRaw >= 70 && stemBodyRaw <= 140;
   const positionFeasible = Math.abs(stackMismatch) <= 15 && physicalFeasible;
@@ -211,9 +201,9 @@ function evaluateFrame(
     frame, totalScore, rawSpacerNeeded: rawSpacer, actualSpacer, stackMismatch, spacerReachOffset,
     requiredStem: stemBodyRaw, roundedStem: Math.max(80, Math.min(130, roundedStem)),
     withinTolerance: physicalFeasible, fitStatus,
-    recommendedStemAngle: bestStemAngle, // 💡 산출된 스템 각도 반환
+    recommendedStemAngle: bestStemAngle,
     angleStackEffect,
-    debug: { sizeScore, stackScore, negativeSpacerScore, spacerScore, reachScore, stemScore, totalScore }
+    debug: { sizeScore, stackScore, negativeSpacerScore, spacerScore, reachScore, stemScore, stemAnglePenalty, totalScore }
   } as any;
 }
 
@@ -242,9 +232,8 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
 
-  // 프레임 탐색 (evaluateFrame 내부에서 스템 각도를 자동 조율함)
   const candidates = FRAME_DATASET.map(frame => 
-    evaluateFrame(frame, baseStack, baseReach, targetStack, targetReach, input.handlebarReach, drivetrainHoodReach)
+    evaluateFrame(frame, baseStack, baseReach, targetStack, targetReach, input.handlebarReach, drivetrainHoodReach, ridingStyle)
   ).sort((a, b) => a.totalScore - b.totalScore);
 
   const bestMatch = candidates[0];
@@ -269,13 +258,10 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     input.handlebarReach + drivetrainHoodReach + (setbackTotalMm * SETBACK_EFFECTIVE_REACH_FACTOR)
   );
 
-  // 💡 [수정] 조언 문구 상세화 (각도 및 스페이서 조합 피드백)
   const recAngle = bestMatch.recommendedStemAngle;
   let stemAdviceStr = `추천 스템 ${bestMatch.roundedStem}mm / ${recAngle}도`;
   
-  if (recAngle === -17) {
-    stemAdviceStr += ` (에어로 포지션 확보를 위한 -17도 스템 적용)`;
-  } else if (recAngle === -10) {
+  if (recAngle === -10) {
     stemAdviceStr += ` (스택 하향을 위한 -10도 스템 적용)`;
   } else {
     if (bestMatch.actualSpacer === 0) {
@@ -320,7 +306,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     baseReach,
     stack: matchedFrame.stackMm,
     reach: matchedFrame.reachMm,
-    frameSizeAdvice: frameSizeAdviceStr, // 💡 새로 구성된 프레임 조언 반영
+    frameSizeAdvice: frameSizeAdviceStr,
     strRatio: Math.round((matchedFrame.stackMm / matchedFrame.reachMm) * 100) / 100,
     spacerHeight: bestMatch.actualSpacer,
     effectiveStack,
@@ -332,7 +318,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     stemDrivetrainAdjust: -drivetrainHoodReach,
     stemTotalAdjust: 0,
     stemLength: bestMatch.roundedStem,
-    stemAdvice: stemAdviceStr, // 💡 새로 구성된 스템 각도 조언 반영
+    stemAdvice: stemAdviceStr, 
     effectiveReach,
     handlebarWidth: input.handlebarWidth,
     handlebarReach: input.handlebarReach,
