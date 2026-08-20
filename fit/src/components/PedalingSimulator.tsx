@@ -19,7 +19,7 @@ interface SimParams {
   cleatOffsetMm: number;
   pedalStackCorrectionMm: number;
   upperBodyCm: number;
-  ridingStyle: 'performance' | 'comfort' | 'endurance'; // 💡 endurance 타입 추가
+  ridingStyle: 'performance' | 'comfort' | 'endurance';
   armLengthCm: number;
   stemLengthMm: number;
   spacerHeightMm: number;
@@ -29,7 +29,7 @@ interface SimParams {
 }
 
 // ============================================================
-// 상수 정의
+// 1. 상수 정의
 // ============================================================
 const HEAD_TUBE_ANGLE_DEG = 73;
 const EXPECTED_TORSO_RATIO = 0.52;
@@ -39,6 +39,10 @@ const ANKLE_HEIGHT_MM = 70;
 const HEEL_TO_ANKLE_RATIO = 0.2;
 const CLEAT_FROM_HEEL_RATIO = 0.62;
 const PEDAL_AXLE_BASE_RADIUS_MM = 12;
+
+// 💡 [핵심 패치] 페달 축에서 발바닥까지의 물리적 스택 상수 정의
+const PEDAL_STACK_BASE_MM = 15; // 페달 스핀들 ~ 접촉면 두께
+const SHOE_CLEAT_STACK_MM = 20; // 클릿 두께(10mm) + 슈즈 아웃솔 두께(10mm)
 
 const TORSO_LENGTH_RATIO = 0.52;
 const UPPER_ARM_RATIO = 0.47;
@@ -152,7 +156,6 @@ function drawFittingRider(
   // ==========================================
   const seatTubeAngleRad = (params.seatTubeAngleDeg * Math.PI) / 180;
 
-  // 안장 상단(BRP 접점) 좌표: BB 기준 싯튜브 각도로 대각선 연장
   const saddleDx = -Math.cos(seatTubeAngleRad) * params.saddleHeightMm;
   const saddleDy = Math.sin(seatTubeAngleRad) * params.saddleHeightMm;
   const saddleX = px(saddleDx);
@@ -162,7 +165,6 @@ function drawFittingRider(
   const headTopY = py(params.stackMm);
   const headBottomY = headTopY + 30 * scale;
 
-  // 싯클러스터 위치 지정
   const frameSeatTubeLenMm = params.saddleHeightMm * 0.68;
   const seatClusterDx = -Math.cos(seatTubeAngleRad) * frameSeatTubeLenMm;
   const seatClusterDy = Math.sin(seatTubeAngleRad) * frameSeatTubeLenMm;
@@ -187,7 +189,7 @@ function drawFittingRider(
   ctx.arc(cx, cy, 6, 0, Math.PI * 2);
   ctx.fill();
 
-  // 헤드튜브
+  // 프레임 튜브 드로잉
   ctx.strokeStyle = '#71717a';
   ctx.lineWidth = tw(TUBE_THICKNESS.headtube);
   ctx.beginPath();
@@ -195,37 +197,35 @@ function drawFittingRider(
   ctx.lineTo(headTopX, headBottomY);
   ctx.stroke();
 
-  // 시트튜브 / 다운튜브 / 탑튜브 / 체인스테이
   ctx.strokeStyle = '#52525b';
   ctx.lineWidth = tw(TUBE_THICKNESS.seattube);
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(seatClusterX, seatClusterY);
-  ctx.stroke(); // 싯튜브
+  ctx.stroke();
 
   ctx.lineWidth = tw(TUBE_THICKNESS.downtube);
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(headTopX, headTopY);
-  ctx.stroke(); // 다운튜브
+  ctx.stroke();
 
   ctx.lineWidth = tw(TUBE_THICKNESS.toptube);
   ctx.beginPath();
   ctx.moveTo(seatClusterX, seatClusterY);
   ctx.lineTo(headTopX, headTopY);
-  ctx.stroke(); // 탑튜브
+  ctx.stroke();
 
   ctx.lineWidth = tw(TUBE_THICKNESS.chainstay);
   ctx.beginPath();
   ctx.moveTo(px(-410), cy);
   ctx.lineTo(seatClusterX, seatClusterY);
-  ctx.stroke(); // 싯스테이
+  ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(px(-410), cy);
-  ctx.stroke(); // 체인스테이
+  ctx.stroke();
 
-  // 싯포스트
   ctx.strokeStyle = '#71717a';
   ctx.lineWidth = tw(TUBE_THICKNESS.seatpost);
   ctx.beginPath();
@@ -233,7 +233,6 @@ function drawFittingRider(
   ctx.lineTo(saddleX, saddleY);
   ctx.stroke();
 
-  // 안장 본체
   const saddleLength = 250 * scale;
   ctx.fillStyle = '#18181b';
   ctx.beginPath();
@@ -251,7 +250,6 @@ function drawFittingRider(
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // BRP 마커 & 기준선
   ctx.fillStyle = '#f43f5e';
   ctx.beginPath();
   ctx.arc(brpX, brpY, 3, 0, Math.PI * 2);
@@ -270,10 +268,11 @@ function drawFittingRider(
   ctx.setLineDash([]);
 
   // ==========================================
-  // 5. 다리/발 페달링 로직
+  // 5. 다리/발 페달링 로직 (역기구학 정밀 패치)
   // ==========================================
-  const hipX = brpX + 30 * scale;
-  const hipY = brpY - 20 * scale;
+  // 💡 1차 패치: 고관절 시작점을 골반 내부 해부학적 위치(-70mm)로 원복
+  const hipX = brpX + 35 * scale;
+  const hipY = brpY - 70 * scale;
 
   const pedalX = cx + Math.cos(crankAngle) * params.crankLengthMm * scale;
   const pedalY = cy + Math.sin(crankAngle) * params.crankLengthMm * scale;
@@ -293,11 +292,16 @@ function drawFittingRider(
   const pedalRadiusPx =
     Math.max(6, PEDAL_AXLE_BASE_RADIUS_MM + params.pedalStackCorrectionMm) *
     scale;
+
+  // 💡 2차 패치: 증발했던 슈즈/클릿/페달 스택(약 35mm)을 발바닥 좌표에 보상!
+  const totalStackMm =
+    PEDAL_STACK_BASE_MM + SHOE_CLEAT_STACK_MM + params.pedalStackCorrectionMm;
+  const soleLocalY = -totalStackMm * scale; // 다리가 닿아야 할 실제 지점을 페달축 35mm 위로 격상
+
   const cleatFromHeelMm =
     params.footSizeMm * CLEAT_FROM_HEEL_RATIO + params.cleatOffsetMm;
   const heelLocalX = -cleatFromHeelMm * scale;
   const toeLocalX = heelLocalX + params.footSizeMm * scale;
-  const soleLocalY = -pedalRadiusPx;
   const ankleLocalX =
     heelLocalX + params.footSizeMm * HEEL_TO_ANKLE_RATIO * scale;
   const ankleLocalY = soleLocalY - ANKLE_HEIGHT_MM * scale;
@@ -363,6 +367,7 @@ function drawFittingRider(
   ctx.moveTo(cx, cy);
   ctx.lineTo(pedalX, pedalY);
   ctx.stroke();
+
   ctx.strokeStyle = '#3f3f46';
   ctx.fillStyle = 'rgba(63,63,70,0.4)';
   ctx.lineWidth = 1.5;
@@ -472,13 +477,11 @@ function drawFittingRider(
   const torsoLenMm = params.upperBodyCm * 10 * TORSO_LENGTH_RATIO;
   const torsoLen = torsoLenMm * scale;
 
-  // 💡 [수정] 라이딩 성향별 팔 굽힘 정도(armBendRatio) 정상화 및 세분화
-  // 값이 클수록 팔을 곧게 뻗어 상체가 위로 서게(Upright) 됩니다.
-  let armBendRatio = 0.97; // endurance: 팔을 거의 뻗어 상체를 높게 유지
+  let armBendRatio = 0.97;
   if (params.ridingStyle === 'performance') {
-    armBendRatio = 0.85; // performance: 팔을 굽혀 에어로 자세를 취함 (상체 하강)
+    armBendRatio = 0.85;
   } else if (params.ridingStyle === 'comfort') {
-    armBendRatio = 0.92; // comfort: 적당히 편안하게 굽힘
+    armBendRatio = 0.92;
   }
 
   const armLen = params.armLengthCm * 10 * scale;
