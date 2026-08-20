@@ -19,7 +19,7 @@ interface SimParams {
   cleatOffsetMm: number;
   pedalStackCorrectionMm: number;
   upperBodyCm: number;
-  ridingStyle: 'performance' | 'comfort';
+  ridingStyle: 'performance' | 'comfort' | 'endurance'; // 💡 endurance 타입 추가
   armLengthCm: number;
   stemLengthMm: number;
   spacerHeightMm: number;
@@ -162,7 +162,7 @@ function drawFittingRider(
   const headTopY = py(params.stackMm);
   const headBottomY = headTopY + 30 * scale;
 
-  // 💡 [수정] 싯클러스터는 BB와 안장을 잇는 동일 축선 상(안장 높이의 약 68% 지점)에 위치해야 함
+  // 싯클러스터 위치 지정
   const frameSeatTubeLenMm = params.saddleHeightMm * 0.68;
   const seatClusterDx = -Math.cos(seatTubeAngleRad) * frameSeatTubeLenMm;
   const seatClusterDy = Math.sin(seatTubeAngleRad) * frameSeatTubeLenMm;
@@ -225,7 +225,7 @@ function drawFittingRider(
   ctx.lineTo(px(-410), cy);
   ctx.stroke(); // 체인스테이
 
-  // 싯포스트 (싯클러스터에서 안장까지 직선으로 곧게 연결)
+  // 싯포스트
   ctx.strokeStyle = '#71717a';
   ctx.lineWidth = tw(TUBE_THICKNESS.seatpost);
   ctx.beginPath();
@@ -472,7 +472,15 @@ function drawFittingRider(
   const torsoLenMm = params.upperBodyCm * 10 * TORSO_LENGTH_RATIO;
   const torsoLen = torsoLenMm * scale;
 
-  const armBendRatio = params.ridingStyle === 'performance' ? 0.92 : 0.86;
+  // 💡 [수정] 라이딩 성향별 팔 굽힘 정도(armBendRatio) 정상화 및 세분화
+  // 값이 클수록 팔을 곧게 뻗어 상체가 위로 서게(Upright) 됩니다.
+  let armBendRatio = 0.97; // endurance: 팔을 거의 뻗어 상체를 높게 유지
+  if (params.ridingStyle === 'performance') {
+    armBendRatio = 0.85; // performance: 팔을 굽혀 에어로 자세를 취함 (상체 하강)
+  } else if (params.ridingStyle === 'comfort') {
+    armBendRatio = 0.92; // comfort: 적당히 편안하게 굽힘
+  }
+
   const armLen = params.armLengthCm * 10 * scale;
   const effectiveArmTargetLen = armLen * armBendRatio;
 
@@ -563,7 +571,7 @@ function drawFittingRider(
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(
-    `헤드튜브-스페이서-스템-핸들바-후드 적층 구조 반영 (Stack: ${params.stackMm} / Reach: ${params.reachMm})`,
+    `상체 렌더링 가중치 반영 완료 (Stack: ${params.stackMm} / Reach: ${params.reachMm})`,
     12,
     24
   );
