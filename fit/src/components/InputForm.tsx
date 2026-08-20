@@ -67,7 +67,7 @@ export function InputForm({
       handlebarReach: input.handlebarReach,
       leverAngle: input.leverAngle ?? 'straight',
       saddleHeight: null,
-      crankLength: null, // 💡 초기화 보장
+      crankLength: null,
     };
     onChange({
       ...input,
@@ -578,12 +578,17 @@ export function InputForm({
               </span>
               <div className="grid grid-cols-3 gap-2.5 mb-2.5">
                 <div>
-                  <label className="mb-1 block text-xs text-zinc-300">
-                    스페이서 (mm)
-                  </label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-xs text-zinc-300">
+                      스페이서 (mm)
+                    </label>
+                    <span className="text-[10px] font-medium text-cyan-400/90">
+                      -10mm 제외분
+                    </span>
+                  </div>
                   <input
                     type="number"
-                    placeholder="예: 20"
+                    placeholder="예: 10 (총20mm)"
                     value={input.currentBike?.spacerHeight ?? ''}
                     onChange={(e) =>
                       handleCurrentBikeChange(
@@ -681,7 +686,6 @@ export function InputForm({
               <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
                 3. 안장 및 크랭크 규격 (선택)
               </span>
-              {/* 💡 신규: 크랭크 길이 입력칸 추가 (모바일 대응을 위해 sm:grid-cols-3 활용) */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs text-zinc-300 whitespace-nowrap">
@@ -718,7 +722,6 @@ export function InputForm({
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-cyan-400 focus:outline-none transition-all"
                   />
                 </div>
-                {/* 💡 크랭크 길이 렌더링 (모바일에서는 넓게 1열, PC에서는 3열 배치) */}
                 <div className="col-span-2 sm:col-span-1">
                   <label className="mb-1 block text-xs text-zinc-300 whitespace-nowrap">
                     현재 크랭크 길이 (mm)
