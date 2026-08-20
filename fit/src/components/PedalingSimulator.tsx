@@ -40,14 +40,13 @@ const HEEL_TO_ANKLE_RATIO = 0.2;
 const CLEAT_FROM_HEEL_RATIO = 0.62;
 const PEDAL_AXLE_BASE_RADIUS_MM = 12;
 
-// 💡 [핵심 패치] 페달 축에서 발바닥까지의 물리적 스택 상수 정의
+// 💡 [패치] 페달 축에서 발바닥까지의 물리적 스택 상수 정의
 const PEDAL_STACK_BASE_MM = 15; // 페달 스핀들 ~ 접촉면 두께
 const SHOE_CLEAT_STACK_MM = 20; // 클릿 두께(10mm) + 슈즈 아웃솔 두께(10mm)
 
 const TORSO_LENGTH_RATIO = 0.52;
 const UPPER_ARM_RATIO = 0.47;
 const FOREARM_RATIO = 0.53;
-const LEVER_LENGTH_MM = 40;
 
 const TUBE_THICKNESS = {
   headtube: 45,
@@ -268,7 +267,7 @@ function drawFittingRider(
   ctx.setLineDash([]);
 
   // ==========================================
-  // 5. 다리/발 페달링 로직 (역기구학 정밀 패치)
+  // 5. 다리/발 페달링 로직 (역기구학 정밀 패치 적용)
   // ==========================================
   // 💡 1차 패치: 고관절 시작점을 골반 내부 해부학적 위치(-70mm)로 원복
   const hipX = brpX + 35 * scale;
@@ -293,10 +292,10 @@ function drawFittingRider(
     Math.max(6, PEDAL_AXLE_BASE_RADIUS_MM + params.pedalStackCorrectionMm) *
     scale;
 
-  // 💡 2차 패치: 증발했던 슈즈/클릿/페달 스택(약 35mm)을 발바닥 좌표에 보상!
+  // 💡 2차 패치: 증발했던 슈즈/클릿/페달 스택(약 35mm)을 발바닥 좌표에 보상
   const totalStackMm =
     PEDAL_STACK_BASE_MM + SHOE_CLEAT_STACK_MM + params.pedalStackCorrectionMm;
-  const soleLocalY = -totalStackMm * scale; // 다리가 닿아야 할 실제 지점을 페달축 35mm 위로 격상
+  const soleLocalY = -totalStackMm * scale;
 
   const cleatFromHeelMm =
     params.footSizeMm * CLEAT_FROM_HEEL_RATIO + params.cleatOffsetMm;
@@ -360,7 +359,7 @@ function drawFittingRider(
       ankleLocalY * Math.cos(footAngle);
   }
 
-  // 렌더링: 크랭크, 페달, 발, 다리
+  // 크랭크, 페달 렌더링
   ctx.strokeStyle = '#e4e4e7';
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -376,6 +375,7 @@ function drawFittingRider(
   ctx.fill();
   ctx.stroke();
 
+  // 발(신발) 렌더링
   ctx.save();
   ctx.translate(pedalX, pedalY);
   ctx.rotate(footAngle);
@@ -395,19 +395,35 @@ function drawFittingRider(
   ctx.fill();
   ctx.restore();
 
-  ctx.strokeStyle = '#22d3ee';
-  ctx.lineWidth = 5;
+  // 💡 [패치] 다리 근육 볼륨 + 뼈대 X-ray 렌더링 적용
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 1) 허벅지 (Thigh)
   ctx.beginPath();
   ctx.moveTo(hipX, hipY);
   ctx.lineTo(kneeX, kneeY);
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.5)';
+  ctx.lineWidth = tw(150);
   ctx.stroke();
-  ctx.strokeStyle = '#0891b2';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#22d3ee';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 2) 종아리 (Shin)
   ctx.beginPath();
   ctx.moveTo(kneeX, kneeY);
   ctx.lineTo(ankleX, ankleY);
+  ctx.strokeStyle = 'rgba(8, 145, 178, 0.5)';
+  ctx.lineWidth = tw(110);
+  ctx.stroke();
+  ctx.strokeStyle = '#0891b2';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
+  ctx.lineCap = 'butt'; // 기본값 복구
+
+  // 다리 관절 포인트
   const joints: [number, number, string][] = [
     [hipX, hipY, '#f43f5e'],
     [kneeX, kneeY, '#22d3ee'],
@@ -416,8 +432,11 @@ function drawFittingRider(
   for (const [jx, jy, color] of joints) {
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(jx, jy, 4, 0, Math.PI * 2);
+    ctx.arc(jx, jy, 4.5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#18181b';
+    ctx.stroke();
   }
 
   // ==========================================
@@ -432,12 +451,14 @@ function drawFittingRider(
 
   const cockpitAngleRad =
     ((90 - HEAD_TUBE_ANGLE_DEG + params.stemAngleDeg) * Math.PI) / 180;
+
+  // 💡 [패치] LEVER_LENGTH_MM(40) 오버리치 제거 및 +10mm 후드 파지 위치 보정
   const totalCockpitLenMm =
     params.stemLengthMm +
     params.handlebarReachMm +
     params.drivetrainHoodReachMm +
-    LEVER_LENGTH_MM;
-  const preLeverLenMm = totalCockpitLenMm - LEVER_LENGTH_MM;
+    10;
+  const preLeverLenMm = totalCockpitLenMm - 10;
 
   const leverStartX = px(
     stemStartMmX + preLeverLenMm * Math.cos(cockpitAngleRad)
@@ -507,13 +528,6 @@ function drawFittingRider(
   const shoulderX = hipX + Math.cos(finalTorsoAngle) * torsoLen;
   const shoulderY = hipY + Math.sin(finalTorsoAngle) * torsoLen;
 
-  ctx.strokeStyle = '#a78bfa';
-  ctx.lineWidth = 5.5;
-  ctx.beginPath();
-  ctx.moveTo(hipX, hipY);
-  ctx.lineTo(shoulderX, shoulderY);
-  ctx.stroke();
-
   const upperArmLen = armLen * UPPER_ARM_RATIO;
   const forearmLen = armLen * FOREARM_RATIO;
   const armDx = handX - shoulderX;
@@ -535,19 +549,46 @@ function drawFittingRider(
   const elbowX = shoulderX + Math.cos(armBaseAngle + elbowOffset) * upperArmLen;
   const elbowY = shoulderY + Math.sin(armBaseAngle + elbowOffset) * upperArmLen;
 
-  ctx.strokeStyle = '#c4b5fd';
-  ctx.lineWidth = 4;
+  // 💡 [패치] 상체/팔 근육 볼륨 + 뼈대 X-ray 렌더링 적용
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 1) 몸통 (Torso)
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.lineTo(shoulderX, shoulderY);
+  ctx.strokeStyle = 'rgba(167, 139, 250, 0.4)';
+  ctx.lineWidth = tw(180); // 몸통 두께 약 230mm
+  ctx.stroke();
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 2) 위팔 (Upper Arm)
   ctx.beginPath();
   ctx.moveTo(shoulderX, shoulderY);
   ctx.lineTo(elbowX, elbowY);
+  ctx.strokeStyle = 'rgba(196, 181, 253, 0.4)';
+  ctx.lineWidth = tw(100); // 위팔 두께 약 90mm
   ctx.stroke();
-  ctx.strokeStyle = '#ddd6fe';
-  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = '#c4b5fd';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 3) 아래팔 (Forearm)
   ctx.beginPath();
   ctx.moveTo(elbowX, elbowY);
   ctx.lineTo(handX, handY);
+  ctx.strokeStyle = 'rgba(221, 214, 254, 0.4)';
+  ctx.lineWidth = tw(90); // 아래팔 두께 약 70mm
+  ctx.stroke();
+  ctx.strokeStyle = '#ddd6fe';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
+  ctx.lineCap = 'butt'; // 기본값 복구
+
+  // 상체 관절 포인트
   const upperJoints: [number, number, string][] = [
     [shoulderX, shoulderY, '#a78bfa'],
     [elbowX, elbowY, '#c4b5fd'],
@@ -556,8 +597,11 @@ function drawFittingRider(
   for (const [jx, jy, color] of upperJoints) {
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(jx, jy, 4, 0, Math.PI * 2);
+    ctx.arc(jx, jy, 4.5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#18181b';
+    ctx.stroke();
   }
 
   // 8. 텍스트 라벨
@@ -574,7 +618,7 @@ function drawFittingRider(
   ctx.font = '10px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(
-    `상체 렌더링 가중치 반영 완료 (Stack: ${params.stackMm} / Reach: ${params.reachMm})`,
+    `생체 역학 렌더링 3차 패치 적용 완료 (Stack: ${params.stackMm} / Reach: ${params.reachMm})`,
     12,
     24
   );
@@ -641,8 +685,7 @@ export function PedalingSimulator({ result, input }: PedalingSimulatorProps) {
               지오메트리 페달링 시뮬레이터
             </h3>
             <p className="text-[11px] text-zinc-500">
-              헤드튜브-스페이서-스템-핸들바-후드 적층 구조가 반영된 2D
-              애니메이션
+              전문가용 생체역학 볼륨 렌더링 및 콕핏 적층 구조 반영 애니메이션
             </p>
           </div>
         </div>
@@ -654,22 +697,27 @@ export function PedalingSimulator({ result, input }: PedalingSimulatorProps) {
         ref={canvasRef}
         className="h-[300px] w-full rounded-xl bg-zinc-950 sm:h-[380px]"
       />
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-500 sm:grid-cols-5">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-rose-400" /> BRP / 클릿
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-cyan-400" /> 허벅지
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-sky-600" /> 종아리
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-violet-400" /> 상체/팔
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-rose-400" /> 레버(후드)
-        </span>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-800/60 pt-2.5 text-[11px] text-zinc-400">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-rose-500 ring-2 ring-rose-500/20" />
+            <span className="text-zinc-300">피팅 기준점</span>
+            <span className="text-[10px] text-zinc-500">(BRP / 레버)</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-cyan-400 ring-2 ring-cyan-400/20" />
+            <span className="text-zinc-300">하체 라인</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-violet-400 ring-2 ring-violet-400/20" />
+            <span className="text-zinc-300">상체 포지션</span>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          하사점 무릎 권장 각도: 138°~142°
+        </div>
       </div>
     </div>
   );
