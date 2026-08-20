@@ -1,4 +1,4 @@
-export type RidingStyle = 'performance' | 'comfort';
+export type RidingStyle = 'performance' | 'comfort' | 'endurance';
 export type ClipPosition = 'standard' | 'midfoot';
 export type ArmInputMode = 'arm' | 'wingspan' | 'none';
 export type PedalSystem = 'spdsl' | 'speedplay' | 'spd' | 'flat';
@@ -157,6 +157,7 @@ export interface FittingResult {
 export const RIDING_STYLE_LABELS: Record<RidingStyle, string> = {
   performance: '퍼포먼스 핏 (속도/효율 중심)',
   comfort: '컴포트 핏 (편안함/장거리 중심)',
+  endurance: '엔듀런스 핏 (업라이트 자세 / 장거리 특화)',
 };
 
 export const CLIP_POSITION_LABELS: Record<ClipPosition, string> = {
