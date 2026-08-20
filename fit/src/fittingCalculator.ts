@@ -29,7 +29,8 @@ const HEAD_TUBE_ANGLE_DEG = 73;
 const STEERER_LEAN_ANGLE = 90 - HEAD_TUBE_ANGLE_DEG;
 const HEAD_ANGLE_LEAN_RATIO = Math.tan(STEERER_LEAN_ANGLE * (Math.PI / 180));
 
-const EXPECTED_TORSO_RATIO = 0.52;
+// 💡 [수정] 글로벌 평균 체형(인심 비율 46.5%)을 기준으로 상체 비율 정상화
+const EXPECTED_TORSO_RATIO = 0.535;
 const EXPECTED_ARM_RATIO = 0.34;
 const SETBACK_EFFECTIVE_REACH_FACTOR = 0.4;
 
@@ -116,10 +117,10 @@ function calculateSetback(
 
   const baseBRP = femurMm * 0.47;
   const styleAdjust =
-    ridingStyle === 'performance'
-      ? -10
-      : ridingStyle === 'comfort' || ridingStyle === 'endurance'
-      ? 5
+    ridingStyle === 'performance' 
+      ? -10 
+      : (ridingStyle === 'comfort' || ridingStyle === 'endurance') 
+      ? 5 
       : 0;
   const cleatAdjust = cleatOffset * 0.8;
 
@@ -144,9 +145,6 @@ function calculateBaseGeometry(
   upperBody: number,
   armLength: number
 ) {
-  // 💡 [수정] 타겟 스택 산출 공식을 글로벌 표준(Inseam * 0.685) 기반으로 상향 안정화
-  // 기존 공식의 맹점(신장 개입이 커 스택이 8~12mm 낮게 산출됨)을 수정하고,
-  // 인심 비례식 85% + 신장 비례식 15% 가중치 혼합을 통해 극단적 체형 편차를 방어함.
   const rawLegStack = inseam * 6.85;
   const rawHeightStack = height * 3.25;
   const baseStack = Math.round(rawLegStack * 0.85 + rawHeightStack * 0.15);
@@ -170,8 +168,10 @@ function diagnoseBodyProportions(
 ) {
   const inseamRatio = (inseam / height) * 100;
   let legTypeLabel = '표준 비율 체형';
-  if (inseamRatio >= 46.8) legTypeLabel = '상체 대비 하체가 긴 체형 (Long Leg)';
-  else if (inseamRatio <= 45.2)
+  // 💡 [수정] 46.5% 인심 평균 기준에 맞춰 롱레그/롱토르소 진단 임계치 정상화
+  if (inseamRatio >= 46.8)
+    legTypeLabel = '상체 대비 하체가 긴 체형 (Long Leg)';
+  else if (inseamRatio <= 45.8)
     legTypeLabel = '하체 대비 상체가 긴 체형 (Long Torso)';
 
   let armTypeLabel = '';
@@ -544,7 +544,7 @@ function diagnoseCurrentBike(
   }
 
   const isFrameOversized = recRawSpacer < -5;
-  const isFrameUndersized = recRawSpacer > 20;
+  const isFrameUndersized = recRawSpacer > 20; 
   const isStemExtreme = recStemLength < 70 || recStemLength > 140;
 
   const isOptimal =
@@ -556,14 +556,12 @@ function diagnoseCurrentBike(
 
   let status: 'optimal' | 'tunable' | 'excessive' = 'optimal';
   let statusLabel = '현재 세팅 최적화 완료';
-  let summary =
-    '현재 자전거의 컴포넌트 세팅이 라이더의 생체 역학적 타겟 수치와 오차 범위 내에서 일치합니다. 별도의 부품 교체나 조정이 요구되지 않습니다.';
+  let summary = '현재 자전거의 컴포넌트 세팅이 라이더의 생체 역학적 타겟 수치와 오차 범위 내에서 일치합니다. 별도의 부품 교체나 조정이 요구되지 않습니다.';
 
   if (ridingStyle === 'endurance' && isFrameUndersized) {
     status = 'excessive';
     statusLabel = '프레임 지오메트리 한계 초과';
-    summary =
-      '타겟 라이딩 성향(엔듀런스) 대비 현재 보유하신 프레임(올라운드/레이스)의 헤드튜브가 지나치게 짧습니다. 조향부 내구성 저하 방지를 위해 엔듀런스 지오메트리 프레임으로의 변경을 강력히 권장합니다.';
+    summary = '타겟 라이딩 성향(엔듀런스) 대비 현재 보유하신 프레임(올라운드/레이스)의 헤드튜브가 지나치게 짧습니다. 조향부 내구성 저하 방지를 위해 엔듀런스 지오메트리 프레임으로의 변경을 강력히 권장합니다.';
     spacerAdvice = `요구 스페이서 적층량(+${recSpacer}mm)이 카본 스티어러 튜브의 구조적 안전 허용치(통상 25mm 이하)를 초과하므로 물리적 셋업이 불가합니다.`;
     stemAdvice = `플러스(+) 각도의 스템 조정을 통한 강제 스택 상향은 에어로다이나믹 저하 및 조향 밸런스 붕괴를 유발하므로 권장하지 않습니다.`;
   } else if (
@@ -579,13 +577,10 @@ function diagnoseCurrentBike(
     summary = isSTAProblematic
       ? '프레임의 싯튜브 각도가 타겟 BRP 범위를 크게 벗어나며, 이를 보완하기 위해서는 특수 규격의 셋백 싯포스트 등 제한적인 컴포넌트 세팅이 요구됩니다.'
       : '현재 프레임 규격이 타겟 지오메트리의 안전 허용 오차를 초과합니다. 스템 및 스페이서의 극단적 조정을 통한 강제 세팅은 조향 안정성을 심각하게 저하시키므로 프레임 사이즈 조정을 권장합니다.';
-
-    if (isFrameOversized)
-      spacerAdvice = `추가 스페이서를 모두 제거(슬램드 세팅)하여도 타겟 수치 대비 콕핏 포지션이 높게 형성됩니다. (스택 과다)`;
-    if (isFrameUndersized)
-      spacerAdvice = `요구 스페이서(+${recSpacer}mm)가 안전 허용치를 초과하여 정상적인 조향부 셋업이 불가합니다.`;
-    if (isStemExtreme)
-      stemAdvice = `산출된 권장 스템 규격(${recStemLength}mm)이 일반적인 조향 한계(70~140mm)를 벗어나 조향 불안정을 유발합니다.`;
+    
+    if (isFrameOversized) spacerAdvice = `추가 스페이서를 모두 제거(슬램드 세팅)하여도 타겟 수치 대비 콕핏 포지션이 높게 형성됩니다. (스택 과다)`;
+    if (isFrameUndersized) spacerAdvice = `요구 스페이서(+${recSpacer}mm)가 안전 허용치를 초과하여 정상적인 조향부 셋업이 불가합니다.`;
+    if (isStemExtreme) stemAdvice = `산출된 권장 스템 규격(${recStemLength}mm)이 일반적인 조향 한계(70~140mm)를 벗어나 조향 불안정을 유발합니다.`;
   } else if (!isOptimal) {
     status = 'tunable';
     statusLabel = '컴포넌트 미세 조정 필요';
@@ -604,12 +599,8 @@ function diagnoseCurrentBike(
     const tempBRPSetback = idealBRPSetback - diff;
     const actionText =
       diff > 0
-        ? `안장을 ${Math.abs(diff)}mm 하향 조정 및 ${Math.abs(
-            diff
-          )}mm 전진 셋업 시`
-        : `안장을 ${Math.abs(diff)}mm 상향 조정 및 ${Math.abs(
-            diff
-          )}mm 후퇴 셋업 시`;
+        ? `안장을 ${Math.abs(diff)}mm 하향 조정 및 ${Math.abs(diff)}mm 전진 셋업 시`
+        : `안장을 ${Math.abs(diff)}mm 상향 조정 및 ${Math.abs(diff)}mm 후퇴 셋업 시`;
 
     crankAdvice = `비권장 규격의 현재 크랭크(${current.crankLength}mm)를 임시로 유지할 경우, 고관절 가동 범위 보상을 위해 ${actionText} 유사한 페달링 궤적 확보가 가능합니다. (임시 타겟 안장높이: ${tempSaddleHeight}mm / 타겟 BRP 셋백: ${tempBRPSetback}mm)`;
   }
@@ -686,10 +677,18 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
 
   const targetStack =
     baseStack +
-    (ridingStyle === 'endurance' ? 25 : ridingStyle === 'comfort' ? 15 : -5);
+    (ridingStyle === 'endurance'
+      ? 25
+      : ridingStyle === 'comfort'
+      ? 15
+      : -5);
   const targetReach =
     baseReach +
-    (ridingStyle === 'endurance' ? -12 : ridingStyle === 'comfort' ? -10 : 5);
+    (ridingStyle === 'endurance'
+      ? -12
+      : ridingStyle === 'comfort'
+      ? -10
+      : 5);
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
   const cockpitReachBonus = getCockpitReachBonus(
@@ -719,8 +718,7 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const bestMatch = candidates[0];
   const matchedFrame = bestMatch.frame;
 
-  const isUpsizedFrame =
-    matchedFrame.stackMm + BASE_TOPCAP_MM > targetStack + 5;
+  const isUpsizedFrame = matchedFrame.stackMm + BASE_TOPCAP_MM > targetStack + 5;
   const effectiveStack =
     matchedFrame.stackMm +
     BASE_TOPCAP_MM +
