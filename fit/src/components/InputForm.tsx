@@ -150,7 +150,7 @@ export function InputForm({
       {/* 2. 상체 및 팔 길이 측정 */}
       <div className="space-y-3">
         <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-          2. 팔 길이 / 상체 정밀 측정
+          2. 팔 길이 / 상체 치수 측정
         </h3>
         <div>
           <label className="block text-xs text-zinc-300 mb-1">
@@ -280,7 +280,7 @@ export function InputForm({
       <div className="space-y-3">
         <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
           <Ruler size={14} className="text-emerald-400" />
-          4. 하체 정밀 측정치 (선택)
+          4. 하체 치수 (선택)
         </h3>
         <div className="grid grid-cols-2 gap-3 items-start">
           <div>
@@ -487,14 +487,14 @@ export function InputForm({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-bold text-zinc-100 whitespace-nowrap">
-                  현재 보유 자전거 피팅 진단
+                  현재 타는 자전거 피팅 진단
                 </span>
                 <span className="shrink-0 whitespace-nowrap rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold text-cyan-300 border border-cyan-500/30">
                   선택 기능
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5 break-keep leading-snug">
-                현재 자전거 수치를 넣으면 부품 교체 처방전을 제공합니다
+                현재 자전거 수치를 넣으면 어떤 부품을 바꾸면 좋을지 알려드립니다
               </p>
             </div>
           </div>
@@ -522,9 +522,10 @@ export function InputForm({
             <div className="flex items-start gap-2 rounded-xl bg-cyan-950/30 p-3 text-xs leading-relaxed text-cyan-200 border border-cyan-500/20 break-keep">
               <Sparkles size={16} className="shrink-0 mt-0.5 text-cyan-400" />
               <span>
-                제조사 지오메트리 표의 <strong>프레임 스택/리치</strong>를
-                입력하시면, 추천값과 비교하여{' '}
-                <strong>스페이서, 스템, 안장/크랭크 처방</strong>을 도출합니다.
+                제조사 지오메트리 표에서 <strong>프레임 스택/리치</strong>를
+                입력하시면, 추천값과 비교해서{' '}
+                <strong>스페이서, 스템, 안장/크랭크</strong>를 어떻게 맞추면
+                되는지 알려드립니다.
               </span>
             </div>
 
