@@ -29,14 +29,14 @@ const HEAD_TUBE_ANGLE_DEG = 73;
 const STEERER_LEAN_ANGLE = 90 - HEAD_TUBE_ANGLE_DEG;
 const HEAD_ANGLE_LEAN_RATIO = Math.tan(STEERER_LEAN_ANGLE * (Math.PI / 180));
 
-// 💡 [수정] 글로벌 평균 체형(인심 비율 46.5%)을 기준으로 상체 비율 정상화
 const EXPECTED_TORSO_RATIO = 0.535;
 const EXPECTED_ARM_RATIO = 0.34;
 const SETBACK_EFFECTIVE_REACH_FACTOR = 0.4;
 
+const MIDFOOT_FIXED_OFFSET_MM = 12; // 순정 슈즈 볼트 홀 최대 후퇴 한계치
+
 const DEBUG_MODE = false;
 
-// 💡 핸들바 폭 & 레버 꺾임에 의한 유효 리치 변화량 산출
 export function getCockpitReachBonus(
   width: number = 400,
   leverAngle: LeverAngle = 'straight'
@@ -74,27 +74,30 @@ function calculateCrankLength(inseam: number): number {
   );
 }
 
-function calculateCleatOffset(
-  clipPosition: ClipPosition,
-  footSize: number | null
-): number {
-  return clipPosition === 'midfoot' && footSize && footSize > 0
-    ? footSize * 0.025
-    : clipPosition === 'midfoot'
-    ? 15
-    : 0;
+function calculateCleatOffset(clipPosition: ClipPosition): number {
+  return clipPosition === 'midfoot' ? MIDFOOT_FIXED_OFFSET_MM : 0;
 }
 
 function calculateSaddleHeight(
   inseam: number,
   crankLength: number,
   clipPosition: ClipPosition,
+  footSize: number | null,
   cleatOffset: number,
   pedalStackCorrection: number
 ) {
   let baseMm = inseam * 0.863 * 10 + (170 - crankLength) * 0.4;
-  if (clipPosition === 'midfoot') baseMm -= 4;
-  const clipCorrection = -(cleatOffset * 0.5);
+  let clipCorrection = 0;
+
+  if (clipPosition === 'midfoot') {
+    baseMm -= 4;
+    clipCorrection = -(cleatOffset * 0.5); // 12mm * 0.5 = -6mm 하향
+  } else {
+    if (footSize && footSize > 0) {
+      clipCorrection = (footSize - 260) * 0.15;
+    }
+  }
+
   return {
     saddleHeight: baseMm + clipCorrection + pedalStackCorrection,
     saddleHeightBaseMm: baseMm,
@@ -105,37 +108,77 @@ function calculateSaddleHeight(
 function calculateSetback(
   inseam: number,
   calfLength: number | null,
-  cleatOffset: number,
-  ridingStyle: RidingStyle
+  footSize: number | null,
+  ridingStyle: RidingStyle,
+  clipPosition: ClipPosition,
+  cleatOffset: number
 ) {
-  let femurMm = 0;
+  const REFERENCE_INSEAM_CM = 82.5;
+  const REFERENCE_CALF_CM = 40.0;
+  const REFERENCE_FOOT_SIZE_MM = 260;
+  const REFERENCE_BRP_SETBACK_MM = 177;
+
+  const INSEAM_FACTOR = 0.1;
+  const CALF_RATIO_FACTOR = 300;
+  const FOOT_SIZE_FACTOR = 0.3;
+
+  const clamp = (value: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, value));
+
+  const inseamCorrection = clamp(
+    (inseam - REFERENCE_INSEAM_CM) * 10 * INSEAM_FACTOR,
+    -5,
+    5
+  );
+
+  let calfCorrection = 0;
   if (calfLength && calfLength > 0) {
-    femurMm = (inseam - calfLength) * 10;
-  } else {
-    femurMm = inseam * 0.52 * 10;
+    const referenceCalfRatio = REFERENCE_CALF_CM / REFERENCE_INSEAM_CM;
+    const actualCalfRatio = calfLength / inseam;
+    calfCorrection = clamp(
+      (referenceCalfRatio - actualCalfRatio) * CALF_RATIO_FACTOR,
+      -12,
+      12
+    );
   }
 
-  const baseBRP = femurMm * 0.47;
-  const styleAdjust =
-    ridingStyle === 'performance' 
-      ? -10 
-      : (ridingStyle === 'comfort' || ridingStyle === 'endurance') 
-      ? 5 
-      : 0;
-  const cleatAdjust = cleatOffset * 0.8;
+  let footSizeCorrection = 0;
+  if (footSize && footSize > 0) {
+    footSizeCorrection = clamp(
+      (footSize - REFERENCE_FOOT_SIZE_MM) * FOOT_SIZE_FACTOR,
+      -6,
+      6
+    );
+  }
 
-  const brpSetback = Math.round(baseBRP + styleAdjust + cleatAdjust);
-  const saddleNoseSetback = brpSetback - 115;
-  const setbackTotalMm = styleAdjust + cleatAdjust;
+  const styleCorrection =
+    ridingStyle === 'performance'
+      ? -10
+      : ridingStyle === 'comfort' || ridingStyle === 'endurance'
+      ? 5
+      : 0;
+
+  const cleatCorrection = clipPosition === 'midfoot' ? cleatOffset : 0; // 고정 12mm 반영
+
+  const rawBRPSetback =
+    REFERENCE_BRP_SETBACK_MM +
+    inseamCorrection +
+    calfCorrection +
+    footSizeCorrection +
+    styleCorrection +
+    cleatCorrection;
+
+  const brpSetback = Math.round(clamp(rawBRPSetback, 140, 230));
 
   return {
-    femurMm: Math.round(femurMm),
-    setbackBaseMm: Math.round(baseBRP),
-    styleAdjust,
-    setbackClipCorrection: Math.round(cleatAdjust),
-    setbackTotalMm: Math.round(setbackTotalMm),
     brpSetback,
-    saddleNoseSetback,
+    saddleNoseSetback: brpSetback - 115,
+    setbackTotalMm: brpSetback - REFERENCE_BRP_SETBACK_MM,
+    inseamCorrection: Math.round(inseamCorrection * 10) / 10,
+    calfCorrection: Math.round(calfCorrection * 10) / 10,
+    footSizeCorrection: Math.round(footSizeCorrection * 10) / 10,
+    styleCorrection,
+    cleatCorrection: Math.round(cleatCorrection * 10) / 10,
   };
 }
 
@@ -168,9 +211,7 @@ function diagnoseBodyProportions(
 ) {
   const inseamRatio = (inseam / height) * 100;
   let legTypeLabel = '표준 비율 체형';
-  // 💡 [수정] 46.5% 인심 평균 기준에 맞춰 롱레그/롱토르소 진단 임계치 정상화
-  if (inseamRatio >= 46.8)
-    legTypeLabel = '상체 대비 하체가 긴 체형 (Long Leg)';
+  if (inseamRatio >= 46.8) legTypeLabel = '상체 대비 하체가 긴 체형 (Long Leg)';
   else if (inseamRatio <= 45.8)
     legTypeLabel = '하체 대비 상체가 긴 체형 (Long Torso)';
 
@@ -194,7 +235,7 @@ function diagnoseBodyProportions(
 }
 
 // ============================================================
-// 3. Frame Evaluator & Solver (기본 탑캡 10mm 포함)
+// 3. Frame Evaluator & Solver
 // ============================================================
 function evaluateFrame(
   frame: FrameSizeSpec,
@@ -208,7 +249,14 @@ function evaluateFrame(
   cockpitReachBonus: number
 ) {
   const idealFrameStack = targetStack - BASE_TOPCAP_MM;
-  const idealFrameReach = targetReach;
+  const baselineSpacerReachOffset = -BASE_TOPCAP_MM * HEAD_ANGLE_LEAN_RATIO;
+
+  const idealFrameReach =
+    targetReach -
+    baselineSpacerReachOffset +
+    (REFERENCE_BAR_REACH_MM - handlebarReach) -
+    drivetrainHoodReach -
+    cockpitReachBonus;
 
   const sizeScore =
     Math.abs(frame.stackMm - idealFrameStack) * 1.5 +
@@ -216,7 +264,6 @@ function evaluateFrame(
 
   let bestStemAngle = -6;
   let angleStackEffect = 0;
-
   let rawSpacer = targetStack - frame.stackMm - BASE_TOPCAP_MM;
   let stemAnglePenalty = 0;
 
@@ -544,7 +591,7 @@ function diagnoseCurrentBike(
   }
 
   const isFrameOversized = recRawSpacer < -5;
-  const isFrameUndersized = recRawSpacer > 20; 
+  const isFrameUndersized = recRawSpacer > 20;
   const isStemExtreme = recStemLength < 70 || recStemLength > 140;
 
   const isOptimal =
@@ -556,12 +603,14 @@ function diagnoseCurrentBike(
 
   let status: 'optimal' | 'tunable' | 'excessive' = 'optimal';
   let statusLabel = '현재 세팅 최적화 완료';
-  let summary = '현재 자전거의 컴포넌트 세팅이 라이더의 생체 역학적 타겟 수치와 오차 범위 내에서 일치합니다. 별도의 부품 교체나 조정이 요구되지 않습니다.';
+  let summary =
+    '현재 자전거의 컴포넌트 세팅이 라이더의 생체 역학적 타겟 수치와 오차 범위 내에서 일치합니다. 별도의 부품 교체나 조정이 요구되지 않습니다.';
 
   if (ridingStyle === 'endurance' && isFrameUndersized) {
     status = 'excessive';
     statusLabel = '프레임 지오메트리 한계 초과';
-    summary = '타겟 라이딩 성향(엔듀런스) 대비 현재 보유하신 프레임(올라운드/레이스)의 헤드튜브가 지나치게 짧습니다. 조향부 내구성 저하 방지를 위해 엔듀런스 지오메트리 프레임으로의 변경을 강력히 권장합니다.';
+    summary =
+      '타겟 라이딩 성향(엔듀런스) 대비 현재 보유하신 프레임(올라운드/레이스)의 헤드튜브가 지나치게 짧습니다. 조향부 내구성 저하 방지를 위해 엔듀런스 지오메트리 프레임으로의 변경을 강력히 권장합니다.';
     spacerAdvice = `요구 스페이서 적층량(+${recSpacer}mm)이 카본 스티어러 튜브의 구조적 안전 허용치(통상 25mm 이하)를 초과하므로 물리적 셋업이 불가합니다.`;
     stemAdvice = `플러스(+) 각도의 스템 조정을 통한 강제 스택 상향은 에어로다이나믹 저하 및 조향 밸런스 붕괴를 유발하므로 권장하지 않습니다.`;
   } else if (
@@ -577,10 +626,13 @@ function diagnoseCurrentBike(
     summary = isSTAProblematic
       ? '프레임의 싯튜브 각도가 타겟 BRP 범위를 크게 벗어나며, 이를 보완하기 위해서는 특수 규격의 셋백 싯포스트 등 제한적인 컴포넌트 세팅이 요구됩니다.'
       : '현재 프레임 규격이 타겟 지오메트리의 안전 허용 오차를 초과합니다. 스템 및 스페이서의 극단적 조정을 통한 강제 세팅은 조향 안정성을 심각하게 저하시키므로 프레임 사이즈 조정을 권장합니다.';
-    
-    if (isFrameOversized) spacerAdvice = `추가 스페이서를 모두 제거(슬램드 세팅)하여도 타겟 수치 대비 콕핏 포지션이 높게 형성됩니다. (스택 과다)`;
-    if (isFrameUndersized) spacerAdvice = `요구 스페이서(+${recSpacer}mm)가 안전 허용치를 초과하여 정상적인 조향부 셋업이 불가합니다.`;
-    if (isStemExtreme) stemAdvice = `산출된 권장 스템 규격(${recStemLength}mm)이 일반적인 조향 한계(70~140mm)를 벗어나 조향 불안정을 유발합니다.`;
+
+    if (isFrameOversized)
+      spacerAdvice = `추가 스페이서를 모두 제거(슬램드 세팅)하여도 타겟 수치 대비 콕핏 포지션이 높게 형성됩니다. (스택 과다)`;
+    if (isFrameUndersized)
+      spacerAdvice = `요구 스페이서(+${recSpacer}mm)가 안전 허용치를 초과하여 정상적인 조향부 셋업이 불가합니다.`;
+    if (isStemExtreme)
+      stemAdvice = `산출된 권장 스템 규격(${recStemLength}mm)이 일반적인 조향 한계(70~140mm)를 벗어나 조향 불안정을 유발합니다.`;
   } else if (!isOptimal) {
     status = 'tunable';
     statusLabel = '컴포넌트 미세 조정 필요';
@@ -599,8 +651,12 @@ function diagnoseCurrentBike(
     const tempBRPSetback = idealBRPSetback - diff;
     const actionText =
       diff > 0
-        ? `안장을 ${Math.abs(diff)}mm 하향 조정 및 ${Math.abs(diff)}mm 전진 셋업 시`
-        : `안장을 ${Math.abs(diff)}mm 상향 조정 및 ${Math.abs(diff)}mm 후퇴 셋업 시`;
+        ? `안장을 ${Math.abs(diff)}mm 하향 조정 및 ${Math.abs(
+            diff
+          )}mm 전진 셋업 시`
+        : `안장을 ${Math.abs(diff)}mm 상향 조정 및 ${Math.abs(
+            diff
+          )}mm 후퇴 셋업 시`;
 
     crankAdvice = `비권장 규격의 현재 크랭크(${current.crankLength}mm)를 임시로 유지할 경우, 고관절 가동 범위 보상을 위해 ${actionText} 유사한 페달링 궤적 확보가 가능합니다. (임시 타겟 안장높이: ${tempSaddleHeight}mm / 타겟 BRP 셋백: ${tempBRPSetback}mm)`;
   }
@@ -646,25 +702,37 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     input.wingspan
   );
   const crankLength = calculateCrankLength(inseam);
-  const cleatOffset = calculateCleatOffset(clipPosition, input.footSize);
 
-  const pedalStackCorrection = PEDAL_STACK_CORRECTION[pedalSystem] ?? 0;
+  // 💡 고정 12mm 클릿 오프셋 적용
+  const cleatOffset = calculateCleatOffset(clipPosition);
+
   const { saddleHeight, saddleHeightBaseMm, saddleClipCorrection } =
     calculateSaddleHeight(
       inseam,
       crankLength,
       clipPosition,
+      input.footSize,
       cleatOffset,
-      pedalStackCorrection
+      PEDAL_STACK_CORRECTION[pedalSystem] ?? 0
     );
 
   const {
-    setbackBaseMm,
-    setbackClipCorrection,
-    setbackTotalMm,
     brpSetback,
     saddleNoseSetback,
-  } = calculateSetback(inseam, input.calfLength, cleatOffset, ridingStyle);
+    setbackTotalMm,
+    inseamCorrection,
+    calfCorrection,
+    footSizeCorrection,
+    styleCorrection,
+    cleatCorrection,
+  } = calculateSetback(
+    inseam,
+    input.calfLength,
+    input.footSize,
+    ridingStyle,
+    clipPosition,
+    cleatOffset
+  );
 
   const { baseStack, baseReach } = calculateBaseGeometry(
     inseam,
@@ -677,18 +745,10 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
 
   const targetStack =
     baseStack +
-    (ridingStyle === 'endurance'
-      ? 25
-      : ridingStyle === 'comfort'
-      ? 15
-      : -5);
+    (ridingStyle === 'endurance' ? 25 : ridingStyle === 'comfort' ? 15 : -5);
   const targetReach =
     baseReach +
-    (ridingStyle === 'endurance'
-      ? -12
-      : ridingStyle === 'comfort'
-      ? -10
-      : 5);
+    (ridingStyle === 'endurance' ? -12 : ridingStyle === 'comfort' ? -10 : 5);
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
   const cockpitReachBonus = getCockpitReachBonus(
@@ -718,7 +778,8 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   const bestMatch = candidates[0];
   const matchedFrame = bestMatch.frame;
 
-  const isUpsizedFrame = matchedFrame.stackMm + BASE_TOPCAP_MM > targetStack + 5;
+  const isUpsizedFrame =
+    matchedFrame.stackMm + BASE_TOPCAP_MM > targetStack + 5;
   const effectiveStack =
     matchedFrame.stackMm +
     BASE_TOPCAP_MM +
@@ -780,10 +841,32 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
   );
 
   let cockpitTuningAdvice: string | null = null;
-  const totalCockpitExcess = drivetrainHoodReach + cockpitReachBonus;
+  const isStemTooShort = bestMatch.roundedStem < 80;
+  const isStemTooLong = bestMatch.roundedStem > 120;
 
-  if (totalCockpitExcess >= 8 && bestMatch.requiredStem < 100) {
-    cockpitTuningAdvice = `현재 핸들바 리치 및 레버 체결 각도로 인해 유효 리치가 과도하게 증가(+${totalCockpitExcess}mm)하여, 비정상적으로 짧은 스템 규격이 산출되었습니다. 프레임 사이즈를 변경하기 전, 레버 각도를 수평(Straight)으로 조정하거나 숏리치 핸들바로 교체하여 콕핏 유효 리치를 감소시킬 것을 강력히 권장합니다.`;
+  if (isStemTooShort || isStemTooLong) {
+    const handleAction = isStemTooShort
+      ? '숏리치(70~75mm) 핸들바로 교체'
+      : '롱리치(80~85mm) 핸들바로 교체';
+    const leverAction =
+      isStemTooShort && leverAngle === 'inward'
+        ? '레버 안쪽 꺾기(Inward) 취소 및 수평(Straight) 원복'
+        : null;
+
+    let adviceSteps = `1순위: ${handleAction}\n`;
+    if (leverAction) adviceSteps += `2순위: ${leverAction}\n`;
+    adviceSteps += `최종: 위 콕핏 타협 후에도 조향 범위가 확보되지 않는다면 프레임 사이즈 ${
+      isStemTooShort ? '다운' : '업'
+    } 고려`;
+
+    cockpitTuningAdvice =
+      `⚠️ [조향 밸런스 경고] 타겟 리치 도달을 위한 요구 스템이 ${bestMatch.roundedStem}mm로 산출되어 정상적인 조향 한계 범위를 벗어납니다. ` +
+      `프레임이나 구동계를 유지한 상태에서 조향 안정성을 확보하려면 다음 순서로 콕핏 세팅을 변경할 것을 권장합니다.\n\n${adviceSteps}`;
+  } else {
+    const totalCockpitExcess = drivetrainHoodReach + cockpitReachBonus;
+    if (totalCockpitExcess >= 8 && bestMatch.requiredStem < 100) {
+      cockpitTuningAdvice = `현재 핸들바 리치 및 레버 체결 각도로 인해 유효 리치가 과도하게 증가(+${totalCockpitExcess}mm)하여, 짧은 스템 규격이 산출되었습니다. 조향성을 높이려면 레버 각도를 수평으로 조정하거나 숏리치 핸들바로 교체하는 것을 권장합니다.`;
+    }
   }
 
   const referenceModelInfo =
@@ -798,20 +881,22 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
     saddleHeightBase: Math.round(saddleHeightBaseMm),
     saddleCrankCorrection: Math.round((170 - crankLength) * 0.4),
     saddleClipCorrection: Math.round(saddleClipCorrection * 10) / 10,
-    pedalStackCorrection,
-    setbackBaseMm: Math.round(setbackBaseMm * 10) / 10,
-    setbackClipCorrection: Math.round(setbackClipCorrection * 10) / 10,
+    pedalStackCorrection: PEDAL_STACK_CORRECTION[pedalSystem] ?? 0,
+
+    setbackBaseMm: 177,
+    setbackClipCorrection: cleatCorrection,
     setbackTotalMm: Math.round(setbackTotalMm * 10) / 10,
     setbackLabel:
       setbackTotalMm > 0
-        ? `표준 BRP 대비 후퇴 세팅 (+${Math.round(setbackTotalMm)}mm)`
+        ? `표준 앵커 대비 후퇴 세팅 (+${Math.round(setbackTotalMm)}mm)`
         : setbackTotalMm < 0
-        ? `표준 BRP 대비 전진 세팅 (${Math.round(setbackTotalMm)}mm)`
-        : '표준 BRP 위치',
-    setbackAdvice: `생체 역학적 최적화 BRP 도달 거리 (${brpSetback}mm)`,
+        ? `표준 앵커 대비 전진 세팅 (${Math.round(setbackTotalMm)}mm)`
+        : '표준 BRP 앵커 위치',
+    setbackAdvice: `신체 비례 정밀 역산 BRP 도달 거리 (${brpSetback}mm)`,
     setbackFemur: null,
     brpSetback,
     saddleNoseSetback,
+
     crankLength,
     targetStack,
     targetReach,
