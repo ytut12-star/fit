@@ -656,10 +656,10 @@ export function calculateFitting(input: FittingInput): FittingResult | null {
 
   const targetStack =
     baseStack +
-    (ridingStyle === 'comfort' ? 5 : ridingStyle === 'performance' ? -5 : 0);
+    (ridingStyle === 'comfort' ? 15 : ridingStyle === 'performance' ? -5 : 0);
   const targetReach =
     baseReach +
-    (ridingStyle === 'comfort' ? -5 : ridingStyle === 'performance' ? 5 : 0);
+    (ridingStyle === 'comfort' ? -10 : ridingStyle === 'performance' ? 5 : 0);
 
   const drivetrainHoodReach = DRIVETRAIN_HOOD_REACH[input.drivetrain] ?? 0;
   const cockpitReachBonus = getCockpitReachBonus(
