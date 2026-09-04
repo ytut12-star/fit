@@ -144,6 +144,7 @@ export function App() {
               onChange={setInput}
               onReset={handleReset}
               onCalculate={handleCalculate}
+              lang={lang}
             />
           </div>
 
