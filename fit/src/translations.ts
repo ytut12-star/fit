@@ -58,9 +58,8 @@ export const t = {
     },
     clipPosition: '클릿 위치',
     clips: {
-      standard: '표준 (모지구 중심)',
-      forward: '전진 세팅 (토크 위주)',
-      backward: '후퇴 세팅 / 미드풋 (케이던스 위주)',
+      standard: '표준 (중족골 중심)',
+      backward: '미드풋',
     },
     sec6Title: '6. 목표 콕핏 부품 규격',
     barWidth: '핸들바 폭 (mm)',
@@ -243,8 +242,7 @@ export const t = {
     clipPosition: 'Cleat Position',
     clips: {
       standard: 'Standard (Ball of foot)',
-      forward: 'Forward (Torque focused)',
-      backward: 'Backward / Mid-foot (Cadence)',
+      backward: 'Mid-foot',
     },
     sec6Title: '6. Target Cockpit Specs',
     barWidth: 'Handlebar Width (mm)',
