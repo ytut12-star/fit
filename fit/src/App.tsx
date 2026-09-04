@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { FittingInput, FittingResult } from './types';
-import { RIDING_STYLE_LABELS } from './types';
 import { calculateFitting } from './fittingCalculator';
 import { InputForm } from './components/InputForm';
 import { Results } from './components/Results';
@@ -153,8 +152,10 @@ export function App() {
               <>
                 <PedalingSimulator result={result} input={submittedInput} lang={lang} />
                 <Results
-                  result={result}
-                  ridingStyleLabel={RIDING_STYLE_LABELS[submittedInput.ridingStyle]} lang={lang}
+                 result={result}
+  // 💡 타입(types.ts) 대신 번역 파일(t[lang])에서 가져오도록 수정
+  ridingStyleLabel={t[lang].styles[submittedInput.ridingStyle as keyof typeof t.ko.styles]}
+  lang={lang}
                 />
               </>
             ) : (
