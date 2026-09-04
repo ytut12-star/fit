@@ -9,7 +9,7 @@ import { Loader2, Sparkles, Bike, Globe } from 'lucide-react';
 
 // 💡 1. 다국어 설정 파일 및 로컬스토리지 훅 불러오기
 import { t, type Lang } from './translations';
-import { useLocalStorage } from './useLocalStorage';
+import { t, type Lang } from './translations';
 
 const INITIAL_INPUT: FittingInput = {
   height: null,
@@ -34,17 +34,17 @@ export function App() {
   const [submittedInput, setSubmittedInput] = useState<FittingInput | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // 💡 2. 다국어 초기값 감지 로직 (앞 2글자만 추출)
+  // 💡 1. 접속할 때마다 브라우저 언어 즉시 감지 (로컬 스토리지 안 씀)
   const getInitialLang = (): Lang => {
     if (typeof navigator === 'undefined') return 'ko';
     const browserLang = navigator.language.slice(0, 2);
     return browserLang === 'en' ? 'en' : 'ko';
   };
 
-  // 💡 3. 언어 상태 관리 (로컬스토리지 연동)
-  const [lang, setLang] = useLocalStorage<Lang>('app_language', getInitialLang());
+  // 💡 2. 로컬 스토리지(useLocalStorage) 대신 일반 useState 사용
+  const [lang, setLang] = useState<Lang>(getInitialLang());
 
-  // 💡 4. SEO 및 번역기 충돌 방지를 위한 HTML lang 속성 동기화
+  // 💡 3. HTML lang 속성 동기화 (기존 동일)
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
