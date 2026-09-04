@@ -1,20 +1,38 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- 💡 [핵심] 모바일 화면 비율 1:1 매칭 및 강제 축소 방지 태그 -->
+    <!-- 모바일 화면 비율 1:1 매칭 및 강제 축소 방지 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
+    <!-- 검색엔진 크롤링 허용 -->
+    <meta name="robots" content="index, follow" />
+    
+    <!-- 사이트 소유권 확인 (구글) -->
     <meta name="google-site-verification" content="fxLemyEIV83IXohSQ6qzmf02OCyW-CMXfWM_e1aKbVw" />
-    <!-- 검색 결과 제목 -->
-    <title>VeloSizing - 로드바이크 정밀 사이즈 & 지오메트리 계산기</title>
+
+    <!-- 💡 [글로벌 SEO] 검색 결과 제목 (영어를 앞에 배치하여 해외 구글링 최적화) -->
+    <title>VeloSizing | Bike Fit Calculator & 로드바이크 사이즈 계산기</title>
     
-    <!-- 검색 결과 요약 설명 -->
-    <meta name="description" content="신장, 인심, 팔 길이 기반 로드바이크 콕핏 셋팅 및 숏크랭크, BRP 셋백 지오메트리 계산 도구" />
+    <!-- 💡 [글로벌 SEO] 검색 결과 요약 설명 (영문 설명 + 핵심 한글 요약) -->
+    <meta name="description" content="Stop knee and back pain! Calculate your optimal saddle height, reach, short crank, and zero-offset setup based on modern forward geometry. 로드바이크 정밀 지오메트리 계산기." />
     
-    <!-- 카카오톡/페이스북 공유 시 뜨는 카드 설정 (Open Graph) -->
-    <meta property="og:title" content="VeloSizing - 로드바이크 사이즈 계산기" />
-    <meta property="og:description" content="내 신체 치수에 딱 맞는 로드바이크 지오메트리와 스템, 크랭크 길이를 계산해보세요." />
+    <!-- 💡 [글로벌 SEO] 해외 검색 키워드 대폭 추가 (포워드 지오메트리, 제로 오프셋 등) -->
+    <meta name="keywords" content="bike fit calculator, forward geometry, zero offset, short crank, KOPS, cycling geometry, saddle position, 자전거 피팅, 피팅 계산기, VeloSizing" />
+
+    <!-- 💡 [해외 커뮤니티 타겟] 레딧/페이스북 공유 시 뜨는 썸네일 카드 (완벽한 영문 서비스처럼 보이도록 세팅) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VeloSizing" />
+    <meta property="og:title" content="VeloSizing - Modern Bike Fit & Geometry Calculator" />
+    <meta property="og:description" content="Find your optimal saddle position and cockpit setup based on modern forward geometry. Say goodbye to KOPS." />
+    <meta property="og:url" content="https://fit-ukn2.vercel.app" />
+    <meta property="og:image" content="https://fit-ukn2.vercel.app/og-image.jpg" />
+
+    <!-- 💡 트위터/X 공유 카드 -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VeloSizing - Modern Bike Fit Calculator" />
+    <meta name="twitter:description" content="Find your optimal saddle position based on modern forward geometry. Say goodbye to KOPS." />
+    <meta name="twitter:image" content="https://fit-ukn2.vercel.app/og-image.jpg" />
   </head>
   <body>
     <div id="root"></div>
