@@ -55,7 +55,7 @@ export function App() {
   const handleCalculate = () => {
     setIsLoading(true);
     setTimeout(() => {
-      const calculated = calculateFitting(input);
+      const calculated = calculateFitting(input, lang);
       setResult(calculated);
       setSubmittedInput(input);
       setIsLoading(false);
