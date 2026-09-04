@@ -2,7 +2,7 @@ export type Lang = 'ko' | 'en';
 
 export const t = {
   ko: {
-    // App.tsx
+    // --- [ App.tsx ] ---
     headerSubtitle: '로드바이크 사이즈 계산기',
     loadingTitle: 'VeloSizing 정밀 분석 중...',
     loadingDesc: '입력하신 신체 치수와 지오메트리 데이터를 기반으로 최적의 세팅을 계산하고 있습니다.',
@@ -12,19 +12,15 @@ export const t = {
     waitingBtn: '[피팅 결과 계산 및 리포트 생성]',
     waitingDesc2: '버튼을 누르시면 정밀 리포트가 생성됩니다.',
     
-    // InputForm.tsx - Titles & Buttons
+    // --- [ InputForm.tsx ] ---
     formTitle: '신체 치수 및 피팅 옵션',
     resetBtn: '초기화',
     calcBtn: '피팅 결과 계산 및 리포트 생성',
-    
-    // Section 1: Basic
     sec1Title: '1. 기본 신체 치수 (필수)',
     height: '신장 (키 cm)',
     heightPh: '예: 175',
     inseam: '인심 (다리길이 cm)',
     inseamPh: '예: 82.5',
-
-    // Section 2: Upper Body
     sec2Title: '2. 팔 길이 / 상체 치수 측정',
     armMode: '팔 길이 측정 방식',
     armModeAuto: '자동 추정 (신장 비율 기반)',
@@ -39,8 +35,6 @@ export const t = {
     shoulderWidth: '어깨 너비 (cm)',
     optionalAuto: '선택 (미입력 시 자동 추정)',
     shoulderPh: '예: 40',
-
-    // Section 3: Style
     sec3Title: '3. 성향 및 유연성',
     ridingStyle: '라이딩 스타일',
     styles: {
@@ -48,16 +42,12 @@ export const t = {
       endurance: '엔듀런스 (편안한 장거리 핏)',
       aggressive: '타임트라이얼 (극단적 에어로)',
     },
-
-    // Section 4: Lower Body
     sec4Title: '4. 하체 치수 (선택)',
     calfLength: '종아리 길이 (cm)',
     calfPh: '예: 40',
     footSize: '발 크기 (mm)',
     footPh: '예: 260',
     calfInfo: '종아리 측정 기준: 의자에 앉아 바닥에 맨발을 대고, 바깥쪽 복사뼈 중심부터 무릎 측면 관절이 접히는 홈까지의 수직 길이를 측정합니다.',
-
-    // Section 5: Pedals
     sec5Title: '5. 클릿 및 페달 스택',
     pedalSystem: '페달 & 슈즈 시스템',
     pedals: {
@@ -72,8 +62,6 @@ export const t = {
       forward: '전진 세팅 (토크 위주)',
       backward: '후퇴 세팅 / 미드풋 (케이던스 위주)',
     },
-
-    // Section 6: Cockpit
     sec6Title: '6. 목표 콕핏 부품 규격',
     barWidth: '핸들바 폭 (mm)',
     barReach: '핸들바 리치 (mm)',
@@ -92,8 +80,6 @@ export const t = {
       shimano_12s_di2: '시마노 12단 Di2',
       sram_axs: '스램 AXS (eTap)',
     },
-
-    // Section 7: Current Bike
     cbTitle: '현재 타는 자전거 피팅 진단',
     cbBadge: '선택 기능',
     cbDesc: '현재 자전거 수치를 넣으면 어떤 부품을 바꾸면 좋을지 알려드립니다',
@@ -124,11 +110,83 @@ export const t = {
     seatTube: '싯튜브 각도 (°)',
     seatTubePh: '예: 73.5',
     crank: '현재 크랭크 길이 (mm)',
-    crankPh: '예: 172.5'
+    crankPh: '예: 172.5',
+
+    // --- [ Results.tsx ] ---
+    rAlertTitle: '⚠️ 콕핏 규격 조정 권고 (프레임 사이즈 확정 전 필수 검토)',
+    rDiagTitle: '현재 보유 자전거 피팅 적합도 진단',
+    rDiagSpacer: '스택 및 스페이서 보정',
+    rDiagStem: '리치 및 스템 규격 보정',
+    rDiagSaddle: '타겟 안장 높이 검증',
+    rDiagSaddleMiss: (h: number) => `현재 안장 높이 데이터 누락 (산출된 목표값: ${h}mm)`,
+    rDiagSeatpost: '싯튜브 각도 및 셋백 분석',
+    rDiagCrank: '비권장 규격 크랭크 사용 시 임시 피팅 가이드',
+    rRatioTitle: '신체 비율 정밀 분석',
+    rRatioBadge: '실측 데이터 기반 산출',
+    rRatioLeg: '하체/상체 비율 진단',
+    rRatioArm: '팔 길이 비율 진단',
+    rRatioDefLeg: '표준 비율 체형',
+    rRatioDefArm: '표준 팔 길이',
+    rAlgoNotice: '💡 알고리즘 반영 사항:',
+    rTargetStyle: '타겟 라이딩 성향',
+    rFrameLimit: '프레임 스택 한계 주의',
+    rRecFrame: '권장 프레임 사이즈',
+    rRecFrameSub: (s: number, r: number) => `프레임 데이터 (Stack: ${s}mm / Reach: ${r}mm)`,
+    rRecFrameExp: (s: number, r: number) => `사용자의 신체 데이터를 바탕으로 산출된 기준 스택(${s}mm) 및 리치(${r}mm)에 가장 부합하는 프레임 사이즈입니다.`,
+    rCleatTitle: '클릿 오프셋 보정 (C)',
+    rCleatChain: (f: number) => `슈즈 사이즈 ${f}mm 기준 보정치 반영`,
+    rSaddleTitle: '1단계 · 타겟 안장 높이',
+    rSaddleUnit: 'mm (BB~안장 상단)',
+    rSaddleExp: (base: number, clip: number, stackStr: string) => `페달, 클릿, 슈즈의 스택 및 적정 슬관절 굴곡 각도를 종합적으로 반영한 목표 안장 높이입니다. (기준 수치 ${base}mm / 클릿 위치 보정 ${clip}mm / 하드웨어 스택 보정 ${stackStr}mm)`,
+    rSaddleChain1: (s: string) => `페달/슈즈 시스템 스택 보정 ${s}mm 반영`,
+    rSaddleChain2: '표준 로드 페달 시스템 스택 적용',
+    rSetbackTitle: '2단계 · 안장 셋백 (BRP 기준)',
+    rSetbackUnit: 'mm (BRP~BB)',
+    rSetbackSub: 'BRP(안장 폭 75mm 지점)부터 BB축까지의 수직 거리',
+    rSetbackExp: (adv: string) => `💡 BRP(Biomechanical Reference Point, 안장 폭 75mm 지점)는 제조사 및 안장 형태와 무관하게 좌골 결절이 안착하는 실질적 생체 역학 기준점입니다. ${adv}`,
+    rSetbackChain1: (c: number) => `클릿 오프셋 보정치 ${c}mm 반영`,
+    rSetbackChain2: '표준 KOPS(Knee Over Pedal Spindle) 기준 적용',
+    rSpacerTitle: '3단계 · 필요 스페이서 스택 (Spacer)',
+    rSpacerSub1: (t: number) => `기본 탑캡(${t}mm) 단일 장착 (추가 링 0mm)`,
+    rSpacerSub2: (t: number, s: number) => `기본 탑캡(${t}mm) + 추가 스페이서 ${s}mm`,
+    rSpacerExp: (t: number) => `조향부 필수 부품인 헤드셋 베어링 커버(기본 탑캡 ${t}mm) 상단에 추가로 요구되는 스페이서 링의 두께입니다.`,
+    rSpacerChain1: (s: number, total: number) => `추가 스페이서 +${s}mm 요구 (콕핏 하단 스택 총합 +${total}mm)`,
+    rSpacerChain2: (t: number) => `스티어러 풀 컷팅 권장 (기본 탑캡 ${t}mm만 적용)`,
+    rStemTitle: '4단계 · 권장 스템 규격',
+    rStemChain: '조향부 기울기(Steerer Angle) 및 스템 각도 궤적 반영',
+    rEffStackTitle: '유효 스택 (Effective Stack)',
+    rEffStackSub: (s: number, t: number, sp: number) => `프레임(${s}) + 탑캡(${t}) + 추가 스페이서(${sp})`,
+    rEffStackExp: '프레임 스택에 기본 탑캡(10mm) 및 추가 스페이서 스택을 합산한 최종 콕핏 수직 높이(지면 대비 상대값)입니다.',
+    rEffStackChain: (t: number) => `기본 탑캡(${t}mm) 및 스페이서 두께 완벽 합산`,
+    rEffReachTitle: '유효 리치 (Effective Cockpit Reach)',
+    rEffReachSub1: (w: number, b: string) => `핸들바 규격(${w}mm) 및 레버 체결각 (${b}mm) 보정 반영`,
+    rEffReachSub2: '프레임 Reach + 콕핏 규격 + 안장 셋백 편차 종합',
+    rEffReachExp: '안장 셋백, 프레임 리치, 조향부(스페이서 높이 보상치, 스템, 핸들바 리치) 및 구동계 레버 규격이 모두 반영된 라이더 상체의 최종 수평 도달 거리입니다.',
+    rEffReachChain1: (w: number, b: string) => `핸들바 폭(${w}mm) 및 레버 각도 보정치 ${b}mm 합산`,
+    rEffReachChain2: '핸들바 및 구동계 레버 표준 포지션 적용',
+    rCrankTitle: '권장 크랭크 암 규격',
+    rCrankSub: '인심 기준 생체 역학적 최적화 규격 산출',
+    rCrankExp: '하체(인심) 길이를 기준으로 고관절 가동 범위와 페달링 효율을 극대화할 수 있는 권장 크랭크 암 규격입니다.',
+
+    // --- [ PedalingSimulator.tsx ] ---
+    simTitle: '지오메트리 페달링 시뮬레이터',
+    simDesc: '전문가용 생체역학 볼륨 렌더링 및 콕핏 적층 구조 반영 애니메이션',
+    simBadge: 'BRP 기준 콕핏 연동',
+    simLegend1: '피팅 기준점',
+    simLegend1Sub: '(BRP / 레버)',
+    simLegend2: '하체 라인',
+    simLegend3: '상체 포지션',
+    simKneeGuide: '하사점 무릎 권장 각도: 138°~142°',
+    simCanvasBB: 'BB',
+    simCanvasBRP: 'BRP',
+    simCanvasLever: '레버',
+    simCanvasKnee: (deg: string) => `무릎 ${deg}°`,
+    simCanvasInfo: (s: number, r: number) => `생체 역학 렌더링 3차 패치 적용 완료 (Stack: ${s} / Reach: ${r})`
   },
 
   // ================= ENGLISH =================
   en: {
+    // --- [ App.tsx ] ---
     headerSubtitle: 'Road Bike Fit Calculator',
     loadingTitle: 'VeloSizing Precision Analysis...',
     loadingDesc: 'Calculating optimal settings based on your body measurements and geometry data.',
@@ -138,19 +196,15 @@ export const t = {
     waitingBtn: '[Calculate & Generate Report]',
     waitingDesc2: 'to see your precision fit.',
     
-    // InputForm.tsx - Titles & Buttons
+    // --- [ InputForm.tsx ] ---
     formTitle: 'Body Measurements & Options',
     resetBtn: 'Reset',
     calcBtn: 'Calculate Fit & Generate Report',
-    
-    // Section 1: Basic
     sec1Title: '1. Basic Measurements (Required)',
     height: 'Height (cm)',
     heightPh: 'e.g. 175',
     inseam: 'Inseam (cm)',
     inseamPh: 'e.g. 82.5',
-
-    // Section 2: Upper Body
     sec2Title: '2. Arm / Upper Body Length',
     armMode: 'Arm Length Measurement',
     armModeAuto: 'Auto-estimate (Height ratio)',
@@ -165,8 +219,6 @@ export const t = {
     shoulderWidth: 'Shoulder Width (cm)',
     optionalAuto: 'Optional (Auto if empty)',
     shoulderPh: 'e.g. 40',
-
-    // Section 3: Style
     sec3Title: '3. Riding Style & Flexibility',
     ridingStyle: 'Riding Style',
     styles: {
@@ -174,16 +226,12 @@ export const t = {
       endurance: 'Endurance (Relaxed / Long distance)',
       aggressive: 'Time Trial (Aggressive Aero)',
     },
-
-    // Section 4: Lower Body
     sec4Title: '4. Lower Body Specs (Optional)',
     calfLength: 'Calf Length (cm)',
     calfPh: 'e.g. 40',
     footSize: 'Foot Size (mm)',
     footPh: 'e.g. 260',
     calfInfo: 'Calf measurement: Sit on a chair barefoot. Measure the vertical distance from the center of the outer ankle bone to the crease on the side of the knee.',
-
-    // Section 5: Pedals
     sec5Title: '5. Cleat & Pedal Stack',
     pedalSystem: 'Pedal System',
     pedals: {
@@ -198,8 +246,6 @@ export const t = {
       forward: 'Forward (Torque focused)',
       backward: 'Backward / Mid-foot (Cadence)',
     },
-
-    // Section 6: Cockpit
     sec6Title: '6. Target Cockpit Specs',
     barWidth: 'Handlebar Width (mm)',
     barReach: 'Handlebar Reach (mm)',
@@ -218,8 +264,6 @@ export const t = {
       shimano_12s_di2: 'Shimano 12s Di2',
       sram_axs: 'SRAM AXS (eTap)',
     },
-
-    // Section 7: Current Bike
     cbTitle: 'Current Bike Fit Diagnosis',
     cbBadge: 'Optional',
     cbDesc: 'Enter your current bike specs to get component replacement recommendations.',
@@ -250,6 +294,77 @@ export const t = {
     seatTube: 'Seat Tube Angle (°)',
     seatTubePh: 'e.g. 73.5',
     crank: 'Current Crank Length (mm)',
-    crankPh: 'e.g. 172.5'
+    crankPh: 'e.g. 172.5',
+
+    // --- [ Results.tsx ] ---
+    rAlertTitle: '⚠️ Cockpit Adjustment Recommended',
+    rDiagTitle: 'Current Bike Fit Diagnosis',
+    rDiagSpacer: 'Stack & Spacer Tuning',
+    rDiagStem: 'Reach & Stem Tuning',
+    rDiagSaddle: 'Saddle Height Verification',
+    rDiagSaddleMiss: (h: number) => `Current saddle height data missing (Target: ${h}mm)`,
+    rDiagSeatpost: 'Seat Tube & Setback Analysis',
+    rDiagCrank: 'Temporary Fit Guide for Non-Recommended Cranks',
+    rRatioTitle: 'Body Proportions Analysis',
+    rRatioBadge: 'Based on actual data',
+    rRatioLeg: 'Leg/Torso Ratio',
+    rRatioArm: 'Arm Length Ratio',
+    rRatioDefLeg: 'Standard Proportion',
+    rRatioDefArm: 'Standard Arm Length',
+    rAlgoNotice: '💡 Algorithm Note:',
+    rTargetStyle: 'Target Riding Style',
+    rFrameLimit: 'Frame Stack Limit Warning',
+    rRecFrame: 'Recommended Frame Size',
+    rRecFrameSub: (s: number, r: number) => `Frame Data (Stack: ${s}mm / Reach: ${r}mm)`,
+    rRecFrameExp: (s: number, r: number) => `This is the best matching frame size based on your target stack (${s}mm) and reach (${r}mm).`,
+    rCleatTitle: 'Cleat Offset (C)',
+    rCleatChain: (f: number) => `Adjusted for shoe size ${f}mm`,
+    rSaddleTitle: 'Step 1 · Target Saddle Height',
+    rSaddleUnit: 'mm (BB to Saddle Top)',
+    rSaddleExp: (base: number, clip: number, stackStr: string) => `Target saddle height incorporating pedal/cleat stack and optimal knee flexion. (Base ${base}mm / Cleat offset ${clip}mm / Hardware stack ${stackStr}mm)`,
+    rSaddleChain1: (s: string) => `Pedal/shoe stack correction ${s}mm applied`,
+    rSaddleChain2: 'Standard road pedal system stack applied',
+    rSetbackTitle: 'Step 2 · Saddle Setback (BRP)',
+    rSetbackUnit: 'mm (BRP to BB)',
+    rSetbackSub: 'Vertical distance from BRP (75mm saddle width) to BB axle',
+    rSetbackExp: (adv: string) => `💡 BRP (Biomechanical Reference Point) is the practical anatomical reference point for your sit bones, regardless of saddle shape. ${adv}`,
+    rSetbackChain1: (c: number) => `Cleat offset correction ${c}mm applied`,
+    rSetbackChain2: 'Standard KOPS (Knee Over Pedal Spindle) applied',
+    rSpacerTitle: 'Step 3 · Required Spacers',
+    rSpacerSub1: (t: number) => `Standard Top Cap (${t}mm) Only (0mm extra)`,
+    rSpacerSub2: (t: number, s: number) => `Top Cap (${t}mm) + Extra Spacers ${s}mm`,
+    rSpacerExp: (t: number) => `The thickness of extra spacer rings required above the standard headset bearing cover (Top cap ${t}mm).`,
+    rSpacerChain1: (s: number, total: number) => `+${s}mm extra spacers required (Total cockpit lower stack +${total}mm)`,
+    rSpacerChain2: (t: number) => `Steerer full cut recommended (Top cap ${t}mm only)`,
+    rStemTitle: 'Step 4 · Recommended Stem',
+    rStemChain: 'Incorporates steerer angle and stem angle trajectory',
+    rEffStackTitle: 'Effective Stack',
+    rEffStackSub: (s: number, t: number, sp: number) => `Frame(${s}) + TopCap(${t}) + Spacer(${sp})`,
+    rEffStackExp: 'The final vertical height of the cockpit relative to the ground, summing frame stack, top cap, and spacers.',
+    rEffStackChain: (t: number) => `Perfectly incorporates top cap (${t}mm) and spacers`,
+    rEffReachTitle: 'Effective Cockpit Reach',
+    rEffReachSub1: (w: number, b: string) => `Bar Width (${w}mm) & Lever Angle (${b}mm) adjusted`,
+    rEffReachSub2: 'Frame Reach + Cockpit Specs + Saddle Setback Diff',
+    rEffReachExp: 'The final horizontal reach of the upper body, incorporating saddle setback, frame reach, steerer compensation, stem, and handlebar/lever specs.',
+    rEffReachChain1: (w: number, b: string) => `Bar width (${w}mm) & Lever angle correction ${b}mm added`,
+    rEffReachChain2: 'Standard handlebar & lever positions applied',
+    rCrankTitle: 'Recommended Crank Length',
+    rCrankSub: 'Biomechanically optimized based on inseam',
+    rCrankExp: 'The ideal crank arm length to maximize hip range of motion and pedaling efficiency based on your lower body length.',
+
+    // --- [ PedalingSimulator.tsx ] ---
+    simTitle: 'Geometry Pedaling Simulator',
+    simDesc: 'Pro Biomechanical Volume Rendering & Cockpit Stack Animation',
+    simBadge: 'BRP Cockpit Integration',
+    simLegend1: 'Fit Ref. Point',
+    simLegend1Sub: '(BRP / Lever)',
+    simLegend2: 'Lower Body Line',
+    simLegend3: 'Upper Body Posture',
+    simKneeGuide: 'Recommended BDC Knee Angle: 138°~142°',
+    simCanvasBB: 'BB',
+    simCanvasBRP: 'BRP',
+    simCanvasLever: 'Lever',
+    simCanvasKnee: (deg: string) => `Knee ${deg}°`,
+    simCanvasInfo: (s: number, r: number) => `Biomechanical Render Patch 3 Applied (Stack: ${s} / Reach: ${r})`
   }
 };
