@@ -59,7 +59,7 @@ export const t = {
     clipPosition: '클릿 위치',
     clips: {
       standard: '표준 (중족골 중심)',
-      backward: '미드풋',
+      midfoot: '미드풋 (클릿 후퇴 세팅)',
     },
     sec6Title: '6. 목표 콕핏 부품 규격',
     barWidth: '핸들바 폭 (mm)',
@@ -242,7 +242,7 @@ export const t = {
     clipPosition: 'Cleat Position',
     clips: {
       standard: 'Standard (Ball of foot)',
-      backward: 'Mid-foot',
+      midfoot: 'Mid-foot (Backward Setup)',
     },
     sec6Title: '6. Target Cockpit Specs',
     barWidth: 'Handlebar Width (mm)',
