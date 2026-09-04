@@ -151,10 +151,10 @@ export function App() {
           <div className="space-y-6 lg:col-span-7 xl:col-span-8">
             {result && submittedInput ? (
               <>
-                <PedalingSimulator result={result} input={submittedInput} />
+                <PedalingSimulator result={result} input={submittedInput} lang={lang} />
                 <Results
                   result={result}
-                  ridingStyleLabel={RIDING_STYLE_LABELS[submittedInput.ridingStyle]}
+                  ridingStyleLabel={RIDING_STYLE_LABELS[submittedInput.ridingStyle]} lang={lang}
                 />
               </>
             ) : (
